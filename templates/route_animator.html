@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Route Animator — VlogStudio</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface2: #1c1c28;
+    --border: #2a2a3a;
+    --accent: #7c3aed;
+    --accent2: #06b6d4;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --text: #f1f5f9;
+    --text2: #94a3b8;
+    --text3: #64748b;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; height: 100vh; display: flex; flex-direction: column; }
+
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; height: 56px; display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
+  .logo { font-size: 18px; font-weight: 800; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .back-btn { padding: 6px 14px; border-radius: 8px; background: var(--surface2); border: 1px solid var(--border); color: var(--text2); cursor: pointer; font-size: 13px; text-decoration: none; display: flex; align-items: center; gap: 6px; }
+  .back-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .main { display: flex; flex: 1; overflow: hidden; }
+
+  /* Control panel */
+  .controls { width: 300px; background: var(--surface); border-right: 1px solid var(--border); padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; flex-shrink: 0; }
+  .panel { background: var(--surface2); border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; }
+  .panel-header { padding: 10px 14px; font-size: 12px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .08em; border-bottom: 1px solid var(--border); }
+  .panel-body { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  label.ctrl { font-size: 12px; color: var(--text2); display: block; margin-bottom: 4px; }
+  input[type=text], select { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 8px 12px; font-size: 13px; outline: none; }
+  input:focus, select:focus { border-color: var(--accent); }
+  .btn { padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; border: none; cursor: pointer; transition: all .2s; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: #6d28d9; }
+  .btn-success { background: var(--success); color: white; }
+  .btn-success:hover { background: #059669; }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  .range-row { display: flex; align-items: center; gap: 8px; }
+  .range-row span { font-size: 12px; color: var(--accent); min-width: 36px; text-align: right; font-weight: 700; }
+
+  /* Vehicle selector */
+  .vehicle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .vehicle-opt { border: 2px solid var(--border); border-radius: 8px; padding: 10px 6px; text-align: center; cursor: pointer; transition: all .2s; background: var(--bg); }
+  .vehicle-opt:hover { border-color: var(--accent2); }
+  .vehicle-opt.selected { border-color: var(--accent); background: rgba(124,58,237,.1); }
+  .vehicle-opt .emoji { font-size: 24px; display: block; margin-bottom: 4px; }
+  .vehicle-opt .label { font-size: 11px; color: var(--text2); }
+
+  /* Map style selector */
+  .map-style-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .map-style-opt { border: 2px solid var(--border); border-radius: 8px; padding: 8px 4px; text-align: center; cursor: pointer; transition: all .2s; background: var(--bg); }
+  .map-style-opt:hover { border-color: var(--accent2); }
+  .map-style-opt.selected { border-color: var(--accent); background: rgba(124,58,237,.1); }
+  .map-style-opt .preview { height: 36px; border-radius: 4px; margin-bottom: 4px; }
+  .map-style-opt .label { font-size: 10px; color: var(--text2); }
+
+  /* Status */
+  .status-box { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px; font-size: 12px; color: var(--text2); min-height: 40px; }
+  .status-box.error { border-color: var(--danger); color: var(--danger); }
+  .status-box.success { border-color: var(--success); color: var(--success); }
+
+  /* Progress */
+  .progress-bar { height: 4px; background: var(--surface2); border-radius: 2px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 2px; transition: width .3s; width: 0%; }
+
+  /* Map area */
+  .map-area { flex: 1; position: relative; }
+  #map { width: 100%; height: 100%; }
+
+  /* 3D overlay canvas */
+  #animCanvas { position: absolute; inset: 0; pointer-events: none; z-index: 1000; }
+
+  /* Vehicle on map */
+  .vehicle-marker { font-size: 32px; transform-origin: center; transition: transform .1s; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.6)); }
+
+  /* Recording indicator */
+  .rec-indicator { position: absolute; top: 16px; right: 16px; z-index: 2000; background: rgba(239,68,68,.9); color: white; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 700; display: none; align-items: center; gap: 6px; }
+  .rec-dot { width: 8px; height: 8px; border-radius: 50%; background: white; animation: blink 1s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+  /* Route info overlay */
+  .route-info { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 2000; background: rgba(10,10,15,.85); border: 1px solid var(--border); border-radius: 12px; padding: 12px 20px; display: none; align-items: center; gap: 20px; backdrop-filter: blur(8px); }
+  .route-info-item { text-align: center; }
+  .route-info-item .val { font-size: 18px; font-weight: 800; color: var(--accent2); }
+  .route-info-item .lbl { font-size: 11px; color: var(--text3); }
+
+  /* Autocomplete */
+  .autocomplete-wrap { position: relative; }
+  .autocomplete-list { position: absolute; top: 100%; left: 0; right: 0; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; z-index: 9999; max-height: 160px; overflow-y: auto; margin-top: 2px; }
+  .autocomplete-item { padding: 8px 12px; font-size: 12px; cursor: pointer; color: var(--text2); }
+  .autocomplete-item:hover { background: var(--border); color: var(--text); }
+
+  /* Animation controls */
+  .anim-controls { position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 2000; background: rgba(10,10,15,.85); border: 1px solid var(--border); border-radius: 12px; padding: 10px 16px; display: none; align-items: center; gap: 12px; backdrop-filter: blur(8px); }
+  .anim-btn { width: 36px; height: 36px; border-radius: 50%; border: none; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; }
+  .anim-btn.play { background: var(--accent); color: white; }
+  .anim-btn.stop { background: var(--danger); color: white; }
+  .speed-label { font-size: 12px; color: var(--text2); }
+</style>
+</head>
+<body>
+
+<header>
+  <a href="/" class="back-btn">← VlogStudio</a>
+  <div class="logo">🗺️ Route Animator</div>
+  <div style="flex:1"></div>
+  <div style="font-size:12px;color:var(--text3)">Powered by OpenStreetMap</div>
+</header>
+
+<div class="main">
+
+  <!-- Controls -->
+  <div class="controls">
+
+    <!-- Route input -->
+    <div class="panel">
+      <div class="panel-header">📍 Route</div>
+      <div class="panel-body">
+        <label class="ctrl">Starting Point</label>
+        <div class="autocomplete-wrap">
+          <input type="text" id="srcInput" placeholder="e.g. Mumbai, India" oninput="geocodeDebounce('src')">
+          <div class="autocomplete-list" id="srcList" style="display:none"></div>
+        </div>
+        <label class="ctrl">Destination</label>
+        <div class="autocomplete-wrap">
+          <input type="text" id="dstInput" placeholder="e.g. Pune, India" oninput="geocodeDebounce('dst')">
+          <div class="autocomplete-list" id="dstList" style="display:none"></div>
+        </div>
+        <button class="btn btn-primary" id="btnRoute" onclick="fetchRoute()">🗺️ Draw Route</button>
+        <div class="status-box" id="statusBox">Enter source and destination to begin.</div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      </div>
+    </div>
+
+    <!-- Vehicle -->
+    <div class="panel">
+      <div class="panel-header">🚗 Vehicle</div>
+      <div class="panel-body">
+        <div class="vehicle-grid">
+          <div class="vehicle-opt selected" onclick="selectVehicle(this,'🚗')" data-v="🚗">
+            <span class="emoji">🚗</span><span class="label">Car</span>
+          </div>
+          <div class="vehicle-opt" onclick="selectVehicle(this,'🚙')" data-v="🚙">
+            <span class="emoji">🚙</span><span class="label">SUV</span>
+          </div>
+          <div class="vehicle-opt" onclick="selectVehicle(this,'🚌')" data-v="🚌">
+            <span class="emoji">🚌</span><span class="label">Bus</span>
+          </div>
+          <div class="vehicle-opt" onclick="selectVehicle(this,'🏍️')" data-v="🏍️">
+            <span class="emoji">🏍️</span><span class="label">Bike</span>
+          </div>
+          <div class="vehicle-opt" onclick="selectVehicle(this,'✈️')" data-v="✈️">
+            <span class="emoji">✈️</span><span class="label">Flight</span>
+          </div>
+          <div class="vehicle-opt" onclick="selectVehicle(this,'🚢')" data-v="🚢">
+            <span class="emoji">🚢</span><span class="label">Ship</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Map style -->
+    <div class="panel">
+      <div class="panel-header">🗺️ Map Style</div>
+      <div class="panel-body">
+        <div class="map-style-grid">
+          <div class="map-style-opt selected" onclick="setMapStyle(this,'road')">
+            <div class="preview" style="background:linear-gradient(135deg,#e8f4e8,#c8e6c9)"></div>
+            <div class="label">Road</div>
+          </div>
+          <div class="map-style-opt" onclick="setMapStyle(this,'satellite')">
+            <div class="preview" style="background:linear-gradient(135deg,#1a3a2a,#2d5a3d)"></div>
+            <div class="label">Satellite</div>
+          </div>
+          <div class="map-style-opt" onclick="setMapStyle(this,'dark')">
+            <div class="preview" style="background:linear-gradient(135deg,#0a0a1a,#1a1a2e)"></div>
+            <div class="label">Dark</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Animation settings -->
+    <div class="panel">
+      <div class="panel-header">⚙️ Animation</div>
+      <div class="panel-body">
+        <label class="ctrl">Speed</label>
+        <div class="range-row">
+          <input type="range" id="animSpeed" min="1" max="10" value="3" oninput="document.getElementById('speedVal').textContent=this.value+'x'">
+          <span id="speedVal">3x</span>
+        </div>
+        <label class="ctrl">Route Line Color</label>
+        <input type="color" id="lineColor" value="#ef4444" style="width:100%;height:36px;border-radius:8px;border:1px solid var(--border);background:var(--bg);cursor:pointer;padding:2px" onchange="updateRouteColor()">
+        <label class="ctrl">Route Line Width</label>
+        <div class="range-row">
+          <input type="range" id="lineWidth" min="2" max="12" value="5" oninput="document.getElementById('lineWidthVal').textContent=this.value+'px';updateRouteColor()">
+          <span id="lineWidthVal">5px</span>
+        </div>
+        <label class="ctrl">Animation Duration (seconds)</label>
+        <div class="range-row">
+          <input type="range" id="animDuration" min="5" max="60" value="15" oninput="document.getElementById('durationVal').textContent=this.value+'s'">
+          <span id="durationVal">15s</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Export -->
+    <div class="panel">
+      <div class="panel-header">🎬 Export</div>
+      <div class="panel-body">
+        <label class="ctrl">Resolution</label>
+        <select id="exportRes">
+          <option value="1280x720">720p (1280×720)</option>
+          <option value="1920x1080" selected>1080p (1920×1080)</option>
+          <option value="640x480">480p (640×480)</option>
+        </select>
+        <button class="btn btn-success" id="btnAnimate" onclick="startAnimation()" disabled>▶ Animate Route</button>
+        <button class="btn btn-secondary" id="btnRecord" onclick="startRecording()" disabled style="margin-top:6px">⏺ Record & Export</button>
+        <button class="btn btn-primary" id="btnSendToEditor" onclick="sendToEditor()" disabled style="margin-top:6px">→ Send to VlogStudio</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Map -->
+  <div class="map-area">
+    <div id="map"></div>
+    <canvas id="animCanvas"></canvas>
+
+    <div class="rec-indicator" id="recIndicator">
+      <div class="rec-dot"></div> REC
+    </div>
+
+    <div class="route-info" id="routeInfo">
+      <div class="route-info-item">
+        <div class="val" id="routeDistance">--</div>
+        <div class="lbl">Distance</div>
+      </div>
+      <div class="route-info-item">
+        <div class="val" id="routeDuration">--</div>
+        <div class="lbl">Est. Drive Time</div>
+      </div>
+      <div class="route-info-item">
+        <div class="val" id="routeFrom">--</div>
+        <div class="lbl">From</div>
+      </div>
+      <div class="route-info-item">
+        <div class="val" id="routeTo">--</div>
+        <div class="lbl">To</div>
+      </div>
+    </div>
+
+    <div class="anim-controls" id="animControls">
+      <button class="anim-btn play" onclick="togglePause()" id="pauseBtn">⏸</button>
+      <button class="anim-btn stop" onclick="stopAnimation()">⏹</button>
+      <span class="speed-label">Animation running...</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+const S = {
+  srcCoords: null, dstCoords: null,
+  routePoints: [], vehicle: '🚗',
+  mapStyle: 'road', tileLayer: null,
+  routeLine: null, animatedLine: null,
+  vehicleMarker: null, animFrame: null,
+  animProgress: 0, paused: false,
+  mediaRecorder: null, recordedChunks: [],
+  recordedBlob: null
+};
+
+// ── Map init ──────────────────────────────────────────────────────────────────
+const map = L.map('map', { zoomControl: true }).setView([20.5937, 78.9629], 5);
+const TILE_LAYERS = {
+  road: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+};
+const TILE_ATTR = {
+  road: '© OpenStreetMap contributors',
+  satellite: '© Esri',
+  dark: '© OpenStreetMap © CARTO'
+};
+
+function setMapStyle(el, style) {
+  document.querySelectorAll('.map-style-opt').forEach(e => e.classList.remove('selected'));
+  el.classList.add('selected');
+  S.mapStyle = style;
+  if (S.tileLayer) map.removeLayer(S.tileLayer);
+  S.tileLayer = L.tileLayer(TILE_LAYERS[style], { attribution: TILE_ATTR[style], maxZoom: 19 }).addTo(map);
+}
+// Init with road
+S.tileLayer = L.tileLayer(TILE_LAYERS.road, { attribution: TILE_ATTR.road, maxZoom: 19 }).addTo(map);
+
+// ── Vehicle selection ─────────────────────────────────────────────────────────
+function selectVehicle(el, v) {
+  document.querySelectorAll('.vehicle-opt').forEach(e => e.classList.remove('selected'));
+  el.classList.add('selected');
+  S.vehicle = v;
+  if (S.vehicleMarker) {
+    S.vehicleMarker.setIcon(vehicleIcon(v));
+  }
+}
+
+function vehicleIcon(emoji) {
+  return L.divIcon({
+    html: `<div style="font-size:32px;filter:drop-shadow(0 4px 8px rgba(0,0,0,.7));transform:scale(1.2)">${emoji}</div>`,
+    iconSize: [40, 40], iconAnchor: [20, 20], className: ''
+  });
+}
+
+// ── Geocode autocomplete ──────────────────────────────────────────────────────
+let geocodeTimers = {};
+function geocodeDebounce(which) {
+  clearTimeout(geocodeTimers[which]);
+  geocodeTimers[which] = setTimeout(() => geocodeSuggest(which), 500);
+}
+
+async function geocodeSuggest(which) {
+  const val = document.getElementById(which+'Input').value.trim();
+  const list = document.getElementById(which+'List');
+  if (val.length < 3) { list.style.display='none'; return; }
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(val)}&format=json&limit=5`);
+    const data = await r.json();
+    list.innerHTML = '';
+    if (!data.length) { list.style.display='none'; return; }
+    data.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'autocomplete-item';
+      div.textContent = item.display_name;
+      div.onclick = () => {
+        document.getElementById(which+'Input').value = item.display_name;
+        if (which==='src') S.srcCoords = [parseFloat(item.lat), parseFloat(item.lon)];
+        else S.dstCoords = [parseFloat(item.lat), parseFloat(item.lon)];
+        list.style.display = 'none';
+      };
+      list.appendChild(div);
+    });
+    list.style.display = 'block';
+  } catch(e) {}
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.autocomplete-wrap')) {
+    document.querySelectorAll('.autocomplete-list').forEach(l => l.style.display='none');
+  }
+});
+
+// ── Fetch Route ───────────────────────────────────────────────────────────────
+async function fetchRoute() {
+  const srcVal = document.getElementById('srcInput').value.trim();
+  const dstVal = document.getElementById('dstInput').value.trim();
+  if (!srcVal || !dstVal) { setStatus('Enter both source and destination.', 'error'); return; }
+
+  setStatus('Locating places...', '');
+  setProgress(10);
+
+  // Geocode if not already done via autocomplete
+  if (!S.srcCoords) S.srcCoords = await geocode(srcVal);
+  if (!S.dstCoords) S.dstCoords = await geocode(dstVal);
+
+  if (!S.srcCoords || !S.dstCoords) { setStatus('Could not find one of the locations. Try being more specific.', 'error'); return; }
+
+  setStatus('Fetching route...', '');
+  setProgress(40);
+
+  try {
+    // Use OSRM (free, no API key needed)
+    const url = `https://router.project-osrm.org/route/v1/driving/${S.srcCoords[1]},${S.srcCoords[0]};${S.dstCoords[1]},${S.dstCoords[0]}?overview=full&geometries=geojson&steps=false`;
+    const r = await fetch(url);
+    const data = await r.json();
+
+    if (!data.routes || !data.routes.length) { setStatus('No route found between these locations.', 'error'); return; }
+
+    const route = data.routes[0];
+    const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
+    S.routePoints = coords;
+
+    const distKm = (route.distance / 1000).toFixed(1);
+    const durMin = Math.round(route.duration / 60);
+    const durText = durMin > 60 ? `${Math.floor(durMin/60)}h ${durMin%60}m` : `${durMin}m`;
+
+    // Clear previous
+    if (S.routeLine) map.removeLayer(S.routeLine);
+    if (S.animatedLine) map.removeLayer(S.animatedLine);
+    if (S.vehicleMarker) map.removeLayer(S.vehicleMarker);
+
+    // Draw full route (faint)
+    S.routeLine = L.polyline(coords, {
+      color: document.getElementById('lineColor').value,
+      weight: parseInt(document.getElementById('lineWidth').value),
+      opacity: 0.25, dashArray: '8,8'
+    }).addTo(map);
+
+    // Animated line (will grow)
+    S.animatedLine = L.polyline([], {
+      color: document.getElementById('lineColor').value,
+      weight: parseInt(document.getElementById('lineWidth').value),
+      opacity: 1
+    }).addTo(map);
+
+    // Place vehicle at start
+    S.vehicleMarker = L.marker(coords[0], { icon: vehicleIcon(S.vehicle), zIndexOffset: 1000 }).addTo(map);
+
+    // Add markers
+    L.circleMarker(coords[0], { radius: 10, fillColor: '#10b981', color: 'white', weight: 3, fillOpacity: 1 })
+      .bindPopup(`<b>Start:</b> ${srcVal}`).addTo(map);
+    L.circleMarker(coords[coords.length-1], { radius: 10, fillColor: '#ef4444', color: 'white', weight: 3, fillOpacity: 1 })
+      .bindPopup(`<b>End:</b> ${dstVal}`).addTo(map);
+
+    // Fit map
+    map.fitBounds(S.routeLine.getBounds(), { padding: [60, 60] });
+
+    // Update info
+    document.getElementById('routeDistance').textContent = distKm + ' km';
+    document.getElementById('routeDuration').textContent = durText;
+    document.getElementById('routeFrom').textContent = srcVal.split(',')[0];
+    document.getElementById('routeTo').textContent = dstVal.split(',')[0];
+    document.getElementById('routeInfo').style.display = 'flex';
+
+    setProgress(100);
+    setStatus(`✅ Route ready! ${distKm}km · ${durText} drive · ${coords.length} points`, 'success');
+    document.getElementById('btnAnimate').disabled = false;
+    document.getElementById('btnRecord').disabled = false;
+
+    S.animProgress = 0;
+
+  } catch(e) {
+    setStatus('Failed to fetch route. Check internet connection.', 'error');
+    setProgress(0);
+  }
+}
+
+async function geocode(place) {
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(place)}&format=json&limit=1`);
+    const data = await r.json();
+    if (!data.length) return null;
+    return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+  } catch { return null; }
+}
+
+// ── Update route color ────────────────────────────────────────────────────────
+function updateRouteColor() {
+  const color = document.getElementById('lineColor').value;
+  const width = parseInt(document.getElementById('lineWidth').value);
+  if (S.routeLine) S.routeLine.setStyle({ color, weight: width });
+  if (S.animatedLine) S.animatedLine.setStyle({ color, weight: width });
+}
+
+// ── Animation ─────────────────────────────────────────────────────────────────
+let animStartTime = null;
+let animDurationMs = 15000;
+
+function startAnimation() {
+  if (!S.routePoints.length) return;
+  S.animProgress = 0;
+  S.paused = false;
+  animDurationMs = parseInt(document.getElementById('animDuration').value) * 1000;
+  if (S.animatedLine) S.animatedLine.setLatLngs([]);
+  if (S.vehicleMarker) S.vehicleMarker.setLatLng(S.routePoints[0]);
+  animStartTime = null;
+  document.getElementById('animControls').style.display = 'flex';
+  document.getElementById('pauseBtn').textContent = '⏸';
+  if (S.animFrame) cancelAnimationFrame(S.animFrame);
+  S.animFrame = requestAnimationFrame(animStep);
+}
+
+function animStep(timestamp) {
+  if (!animStartTime) animStartTime = timestamp;
+  if (S.paused) { S.animFrame = requestAnimationFrame(animStep); return; }
+
+  const elapsed = timestamp - animStartTime;
+  const progress = Math.min(elapsed / animDurationMs, 1);
+  S.animProgress = progress;
+
+  const pts = S.routePoints;
+  const idx = Math.floor(progress * (pts.length - 1));
+  const shown = pts.slice(0, idx + 1);
+
+  if (S.animatedLine) S.animatedLine.setLatLngs(shown);
+
+  // Move vehicle with heading
+  if (S.vehicleMarker && idx < pts.length) {
+    S.vehicleMarker.setLatLng(pts[idx]);
+    // Camera follow
+    if (progress > 0.05) {
+      map.setView(pts[idx], map.getZoom(), { animate: true, duration: 0.3 });
+    }
+  }
+
+  if (progress < 1) {
+    S.animFrame = requestAnimationFrame(animStep);
+  } else {
+    document.getElementById('animControls').style.display = 'none';
+    document.getElementById('btnSendToEditor').disabled = false;
+    if (S.mediaRecorder && S.mediaRecorder.state === 'recording') {
+      S.mediaRecorder.stop();
+    }
+  }
+}
+
+function togglePause() {
+  S.paused = !S.paused;
+  document.getElementById('pauseBtn').textContent = S.paused ? '▶' : '⏸';
+  if (!S.paused) {
+    animStartTime = performance.now() - (S.animProgress * animDurationMs);
+  }
+}
+
+function stopAnimation() {
+  if (S.animFrame) cancelAnimationFrame(S.animFrame);
+  document.getElementById('animControls').style.display = 'none';
+  S.animProgress = 0;
+  if (S.animatedLine) S.animatedLine.setLatLngs([]);
+  if (S.vehicleMarker) S.vehicleMarker.setLatLng(S.routePoints[0]);
+  map.fitBounds(S.routeLine.getBounds(), { padding: [60, 60] });
+}
+
+// ── Recording ─────────────────────────────────────────────────────────────────
+async function startRecording() {
+  if (!S.routePoints.length) return;
+  S.recordedChunks = [];
+
+  try {
+    const stream = document.getElementById('map').closest('.map-area').captureStream ?
+      document.getElementById('map').closest('.map-area').captureStream(30) :
+      await navigator.mediaDevices.getDisplayMedia({ video: true });
+
+    S.mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
+    S.mediaRecorder.ondataavailable = e => { if (e.data.size > 0) S.recordedChunks.push(e.data); };
+    S.mediaRecorder.onstop = () => {
+      S.recordedBlob = new Blob(S.recordedChunks, { type: 'video/webm' });
+      document.getElementById('recIndicator').style.display = 'none';
+      offerDownload();
+      document.getElementById('btnSendToEditor').disabled = false;
+    };
+    S.mediaRecorder.start(100);
+    document.getElementById('recIndicator').style.display = 'flex';
+    startAnimation();
+
+  } catch(e) {
+    // Fallback: just animate and offer screen recording instructions
+    setStatus('⚠️ Auto-record not supported in this browser. Use screen recorder or just animate and use "Send to VlogStudio".', 'error');
+    startAnimation();
+  }
+}
+
+function offerDownload() {
+  if (!S.recordedBlob) return;
+  const url = URL.createObjectURL(S.recordedBlob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'route_animation.webm'; a.click();
+  setStatus('✅ Route animation downloaded! Now click "Send to VlogStudio" to use it as map overlay.', 'success');
+}
+
+// ── Send to editor ────────────────────────────────────────────────────────────
+function sendToEditor() {
+  // Open VlogStudio with a flag to load map overlay
+  if (S.recordedBlob) {
+    // Store blob in sessionStorage and redirect
+    const url = URL.createObjectURL(S.recordedBlob);
+    sessionStorage.setItem('routeVideoUrl', url);
+    sessionStorage.setItem('routeVideoName', 'route_animation.webm');
+    window.location.href = '/?loadRoute=1';
+  } else {
+    // Just redirect to main editor
+    alert('Tip: Click "Record & Export" first to capture the animation, then send to editor. Or manually upload the downloaded video as the Map Recording in VlogStudio.');
+    window.location.href = '/';
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function setStatus(msg, type) {
+  const el = document.getElementById('statusBox');
+  el.textContent = msg;
+  el.className = 'status-box' + (type ? ' '+type : '');
+}
+function setProgress(pct) {
+  document.getElementById('progressFill').style.width = pct + '%';
+}
+</script>
+</body>
+</html>

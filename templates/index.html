@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VlogStudio — Driving Vlog Editor</title>
+<style>
+:root {
+  --bg: #0a0a0f; --surface: #13131a; --surface2: #1c1c28; --surface3: #22223a;
+  --border: #2a2a3a; --accent: #7c3aed; --accent2: #06b6d4;
+  --success: #10b981; --warning: #f59e0b; --danger: #ef4444;
+  --text: #f1f5f9; --text2: #94a3b8; --text3: #64748b; --radius: 12px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+/* ── Header ── */
+header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 20px; height: 58px; display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
+.logo { font-size: 20px; font-weight: 800; background: linear-gradient(135deg,var(--accent),var(--accent2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; white-space:nowrap; }
+.logo-sub { color: var(--text3); font-size: 11px; }
+.route-btn { padding: 7px 14px; background: rgba(6,182,212,.12); border: 1px solid var(--accent2); border-radius: 8px; color: var(--accent2); font-size: 13px; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.route-btn:hover { background: rgba(6,182,212,.25); }
+header .spacer { flex: 1; }
+.step-bar { display: flex; gap: 6px; align-items: center; }
+.step { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; background: var(--surface2); color: var(--text3); border: 1px solid var(--border); cursor: pointer; white-space: nowrap; }
+.step.active { background: var(--accent); color: white; border-color: var(--accent); }
+.step.done { background: var(--success); color: white; border-color: var(--success); }
+.step-arrow { color: var(--text3); font-size: 11px; }
+
+/* ── Quality badge ── */
+.quality-badge { display: flex; align-items: center; gap: 6px; padding: 5px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; font-size: 11px; color: var(--text3); white-space: nowrap; }
+.quality-badge span { color: var(--warning); font-weight: 700; }
+
+/* ── Layout ── */
+.app-body { display: flex; flex: 1; overflow: hidden; }
+
+/* ── Left sidebar ── */
+.sidebar { width: 300px; background: var(--surface); border-right: 1px solid var(--border); overflow-y: auto; display: flex; flex-direction: column; gap: 0; flex-shrink: 0; }
+.sidebar-section { border-bottom: 1px solid var(--border); }
+.section-header { padding: 12px 16px; font-size: 11px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: .08em; display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
+.section-header:hover { color: var(--text2); }
+.section-header .toggle { margin-left: auto; transition: transform .2s; }
+.section-header.collapsed .toggle { transform: rotate(-90deg); }
+.section-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.section-body.hidden { display: none; }
+
+/* ── Form controls ── */
+label.ctrl { font-size: 12px; color: var(--text2); display: block; margin-bottom: 5px; font-weight: 500; }
+input[type=text], input[type=number], select, textarea {
+  width: 100%; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text); padding: 9px 12px; font-size: 13px; outline: none;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; cursor: pointer; }
+input[type=range] { width: 100%; accent-color: var(--accent); height: 4px; }
+.range-row { display: flex; align-items: center; gap: 8px; }
+.range-row span { font-size: 12px; color: var(--accent); min-width: 40px; text-align: right; font-weight: 700; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+
+/* ── Drop zones ── */
+.dropzone { border: 2px dashed var(--border); border-radius: 10px; padding: 16px 12px; text-align: center; cursor: pointer; position: relative; transition: all .2s; }
+.dropzone:hover, .dropzone.drag { border-color: var(--accent); background: rgba(124,58,237,.06); }
+.dropzone.loaded { border-color: var(--success); background: rgba(16,185,129,.06); border-style: solid; }
+.dropzone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.dz-icon { font-size: 24px; margin-bottom: 5px; }
+.dz-label { font-size: 13px; font-weight: 600; }
+.dz-hint { font-size: 11px; color: var(--text3); margin-top: 3px; }
+.dropzone.loaded .dz-label { color: var(--success); }
+
+/* ── Multi-item cards ── */
+.item-card { background: var(--surface3); border: 1px solid var(--border); border-radius: 10px; padding: 12px; position: relative; }
+.item-card .card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.item-card .card-num { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: white; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.item-card .card-title { font-size: 13px; font-weight: 600; flex: 1; }
+.item-card .remove-btn { width: 24px; height: 24px; border-radius: 6px; background: rgba(239,68,68,.15); border: 1px solid rgba(239,68,68,.3); color: var(--danger); cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.item-card .remove-btn:hover { background: var(--danger); color: white; }
+.add-btn { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px; border: 2px dashed var(--border); border-radius: 8px; color: var(--text3); font-size: 12px; font-weight: 600; cursor: pointer; transition: all .2s; background: none; width: 100%; }
+.add-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── Buttons ── */
+.btn { padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; border: none; cursor: pointer; transition: all .2s; display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%; }
+.btn-primary { background: var(--accent); color: white; }
+.btn-primary:hover { background: #6d28d9; }
+.btn-success { background: var(--success); color: white; }
+.btn-success:hover { background: #059669; }
+.btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+.btn-sm { padding: 6px 12px; font-size: 12px; width: auto; }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+input[type=color] { width: 100%; height: 36px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); cursor: pointer; padding: 3px; }
+
+/* ── Canvas area ── */
+.canvas-area { flex: 1; background: #050508; display: flex; flex-direction: column; min-width: 0; }
+.preview-wrap { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 20px; }
+#videoPreview { max-width: 100%; max-height: 100%; border-radius: 8px; object-fit: contain; }
+.preview-placeholder { display: flex; flex-direction: column; align-items: center; gap: 12px; color: var(--text3); }
+.preview-placeholder .big-icon { font-size: 60px; }
+.preview-placeholder .big-text { font-size: 16px; font-weight: 700; color: var(--text2); }
+
+/* Map ghost overlay */
+#mapDragLayer { position: absolute; inset: 0; pointer-events: none; }
+#mapDragLayer.active { pointer-events: all; }
+.map-ghost { position: absolute; border: 2px solid var(--accent2); border-radius: 4px; background: rgba(6,182,212,.12); cursor: move; user-select: none; }
+.map-ghost-label { position: absolute; top: -24px; left: 0; background: var(--accent2); color: #000; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; white-space: nowrap; }
+.map-ghost-resize { position: absolute; bottom: -5px; right: -5px; width: 12px; height: 12px; background: var(--accent2); border-radius: 2px; cursor: se-resize; }
+
+/* Timeline */
+.timeline { height: 100px; background: var(--surface); border-top: 1px solid var(--border); padding: 10px 16px; display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+.tl-label { font-size: 10px; color: var(--text3); font-weight: 700; text-transform: uppercase; letter-spacing:.06em; }
+.tl-track { position: relative; height: 28px; background: var(--surface2); border-radius: 6px; overflow: hidden; cursor: pointer; }
+.tl-progress { height: 100%; background: linear-gradient(90deg,var(--accent),var(--accent2)); border-radius: 6px; width: 0%; pointer-events: none; }
+.tl-playhead { position: absolute; top: 0; bottom: 0; width: 2px; background: white; left: 0%; pointer-events: none; }
+.tl-controls { display: flex; align-items: center; gap: 10px; }
+.tl-btn { width: 32px; height: 32px; border-radius: 8px; background: var(--surface2); border: 1px solid var(--border); color: var(--text); cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; }
+.tl-btn:hover { border-color: var(--accent); color: var(--accent); }
+.time-disp { font-size: 13px; font-weight: 700; color: var(--accent2); font-family: monospace; }
+
+/* ── Right panel ── */
+.right-panel { width: 310px; background: var(--surface); border-left: 1px solid var(--border); overflow-y: auto; display: flex; flex-direction: column; flex-shrink: 0; }
+
+/* Caption list */
+.caption-list { max-height: 160px; overflow-y: auto; display: flex; flex-direction: column; gap: 3px; }
+.caption-item { display: flex; align-items: center; gap: 8px; padding: 5px 8px; background: var(--bg); border-radius: 5px; font-size: 12px; }
+.caption-item .word { flex: 1; }
+.caption-item .ctime { color: var(--text3); font-family: monospace; font-size: 10px; }
+
+/* Progress */
+.progress-bar { height: 5px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg,var(--accent),var(--accent2)); border-radius: 3px; transition: width .3s; }
+.status-msg { font-size: 11px; color: var(--text2); text-align: center; min-height: 16px; }
+
+/* Toast */
+.toast-wrap { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 8px; z-index: 9999; }
+.toast { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; font-size: 13px; max-width: 300px; display: flex; align-items: center; gap: 8px; animation: slideIn .3s; }
+.toast.success { border-color: var(--success); }
+.toast.error { border-color: var(--danger); }
+@keyframes slideIn { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
+
+/* Guide */
+.guide { position: fixed; inset: 0; background: rgba(0,0,0,.75); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.guide-box { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 28px; max-width: 460px; width: 90%; }
+.guide-box h2 { font-size: 20px; margin-bottom: 8px; }
+.guide-box p { color: var(--text2); font-size: 13px; line-height: 1.6; margin-bottom: 16px; }
+.guide-steps { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+.guide-step { display: flex; align-items: flex-start; gap: 10px; }
+.guide-step .num { width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: white; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
+.guide-step .desc { font-size: 13px; color: var(--text2); line-height: 1.5; }
+
+/* Quality info box */
+.quality-info { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 11px; }
+.quality-info .qi-row { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid var(--border); }
+.quality-info .qi-row:last-child { border: none; }
+.quality-info .qi-label { color: var(--text3); }
+.quality-info .qi-val { color: var(--text); font-weight: 600; }
+.quality-info .qi-val.fast { color: var(--success); }
+.quality-info .qi-val.med { color: var(--warning); }
+.quality-info .qi-val.slow { color: var(--danger); }
+
+/* Timer fields */
+.timer-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+/* Tag */
+.tag { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 700; }
+.tag-cyan { background: rgba(6,182,212,.15); color: var(--accent2); }
+.tag-purple { background: rgba(124,58,237,.15); color: var(--accent); }
+.tag-green { background: rgba(16,185,129,.15); color: var(--success); }
+.divider { height: 1px; background: var(--border); }
+</style>
+</head>
+<body>
+
+<!-- Guide -->
+<div class="guide" id="guide">
+  <div class="guide-box">
+    <h2>👋 Welcome to VlogStudio</h2>
+    <p>Your all-in-one driving vlog editor. Here's how it works:</p>
+    <div class="guide-steps">
+      <div class="guide-step"><div class="num">1</div><div class="desc"><b>Upload driving video</b> — your dashcam or phone footage</div></div>
+      <div class="guide-step"><div class="num">2</div><div class="desc"><b>Add map overlay</b> — screen record Google Maps, set position & timer</div></div>
+      <div class="guide-step"><div class="num">3</div><div class="desc"><b>Auto captions</b> — AI transcribes your voice, syncs word-by-word</div></div>
+      <div class="guide-step"><div class="num">4</div><div class="desc"><b>3D floating text</b> — cinematic text that floats in the scene</div></div>
+      <div class="guide-step"><div class="num">5</div><div class="desc"><b>Export</b> — final MP4 ready for YouTube/Instagram</div></div>
+    </div>
+    <button class="btn btn-primary" onclick="document.getElementById('guide').style.display='none'">Get Started →</button>
+  </div>
+</div>
+
+<!-- Header -->
+<header>
+  <div>
+    <div class="logo">VlogStudio</div>
+    <div class="logo-sub">Driving Vlog Editor</div>
+  </div>
+  <a href="/route" class="route-btn">🗺️ Route Animator</a>
+  <div class="spacer"></div>
+  <div class="quality-badge">CPU: <span>x264 Software</span> · 720p ~2x slower · 1080p ~5x slower</div>
+  <div class="step-bar">
+    <div class="step active" id="step1">1·Upload</div>
+    <div class="step-arrow">›</div>
+    <div class="step" id="step2">2·Map</div>
+    <div class="step-arrow">›</div>
+    <div class="step" id="step3">3·Captions</div>
+    <div class="step-arrow">›</div>
+    <div class="step" id="step4">4·3D Text</div>
+    <div class="step-arrow">›</div>
+    <div class="step" id="step5">5·Export</div>
+  </div>
+</header>
+
+<div class="app-body">
+
+<!-- ── Left Sidebar ── -->
+<div class="sidebar">
+
+  <!-- Videos -->
+  <div class="sidebar-section">
+    <div class="section-header" onclick="toggleSection(this)">
+      📁 Videos <span class="toggle">▾</span>
+    </div>
+    <div class="section-body" id="videoCards">
+      <div class="dropzone" id="dzMain" onclick="document.getElementById('inMain').click()">
+        <div class="dz-icon">🎬</div>
+        <div class="dz-label" id="mainLabel">Drop Main Driving Video</div>
+        <div class="dz-hint">MP4 · MOV · AVI</div>
+        <input type="file" id="inMain" accept="video/*" onchange="uploadMain(this)">
+      </div>
+      <div class="dropzone" id="dzMusic" onclick="document.getElementById('inMusic').click()">
+        <div class="dz-icon">🎵</div>
+        <div class="dz-label" id="musicLabel">Background Music (optional)</div>
+        <div class="dz-hint">MP3 · WAV · AAC</div>
+        <input type="file" id="inMusic" accept="audio/*" onchange="uploadMusic(this)">
+      </div>
+      <label class="ctrl">Music Volume</label>
+      <div class="range-row">
+        <input type="range" id="musicVol" min="0" max="1" step="0.05" value="0.3" oninput="document.getElementById('musicVolV').textContent=Math.round(this.value*100)+'%'">
+        <span id="musicVolV">30%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Map Overlays -->
+  <div class="sidebar-section">
+    <div class="section-header" onclick="toggleSection(this)">
+      🗺️ Map Overlays <span class="toggle">▾</span>
+    </div>
+    <div class="section-body">
+      <div id="mapCards"></div>
+      <button class="add-btn" onclick="addMapOverlay()">+ Add Map Overlay</button>
+      <div class="divider"></div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:12px;color:var(--text2)">Drag Mode</span>
+        <input type="checkbox" id="dragMode" onchange="toggleDragMode(this.checked)" style="width:auto">
+        <span style="font-size:11px;color:var(--text3)">(drag map on preview)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Trim -->
+  <div class="sidebar-section">
+    <div class="section-header" onclick="toggleSection(this)">
+      ✂️ Trim <span class="toggle">▾</span>
+    </div>
+    <div class="section-body">
+      <div class="row2">
+        <div>
+          <label class="ctrl">Start (s)</label>
+          <input type="number" id="trimStart" value="0" min="0" step="1">
+        </div>
+        <div>
+          <label class="ctrl">End (s, 0=full)</label>
+          <input type="number" id="trimEnd" value="0" min="0" step="1">
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Canvas ── -->
+<div class="canvas-area">
+  <div class="preview-wrap" id="previewWrap">
+    <div class="preview-placeholder" id="placeholder">
+      <div class="big-icon">🎬</div>
+      <div class="big-text">Upload your driving video to start</div>
+      <div style="font-size:13px;color:var(--text3)">Use the Videos panel on the left</div>
+    </div>
+    <video id="videoPreview" controls style="display:none;max-height:100%;max-width:100%" onloadedmetadata="onVideoLoaded()"></video>
+    <div id="mapDragLayer">
+      <div class="map-ghost" id="mapGhost" style="display:none">
+        <div class="map-ghost-label">🗺️ MAP</div>
+        <div class="map-ghost-resize" id="resizeHandle"></div>
+      </div>
+    </div>
+  </div>
+  <div class="timeline">
+    <div class="tl-label">Timeline</div>
+    <div class="tl-track" onclick="seekVideo(event)">
+      <div class="tl-progress" id="tlProgress"></div>
+      <div class="tl-playhead" id="tlPlayhead"></div>
+    </div>
+    <div class="tl-controls">
+      <button class="tl-btn" onclick="togglePlay()">▶</button>
+      <div class="time-disp" id="timeDisp">0:00 / 0:00</div>
+      <div class="spacer" style="flex:1"></div>
+      <span class="tag tag-cyan" id="durTag">No video</span>
+    </div>
+  </div>
+</div>
+
+<!-- ── Right Panel ── -->
+<div class="right-panel">
+
+  <!-- Captions -->
+  <div class="sidebar-section">
+    <div class="section-header" onclick="toggleSection(this)">
+      💬 Auto Captions <span class="toggle">▾</span>
+    </div>
+    <div class="section-body">
+      <label class="ctrl">Caption Style</label>
+      <select id="captionStyle">
+        <option value="tiktok">TikTok — Word Highlight</option>
+        <option value="classic">Classic Subtitles</option>
+        <option value="minimal">Minimal / Clean</option>
+      </select>
+      <button class="btn btn-secondary" id="btnTranscribe" onclick="transcribe()" disabled>
+        🎙️ Auto-Transcribe Voice
+      </button>
+      <div class="progress-bar" id="transcribeBar" style="display:none">
+        <div class="progress-fill" id="transcribeFill" style="width:0%"></div>
+      </div>
+      <div class="status-msg" id="transcribeMsg"></div>
+      <div class="caption-list" id="captionList"></div>
+    </div>
+  </div>
+
+  <!-- 3D Text -->
+  <div class="sidebar-section">
+    <div class="section-header" onclick="toggleSection(this)">
+      ✨ 3D Floating Text <span class="toggle">▾</span>
+    </div>
+    <div class="section-body">
+      <div id="text3dCards"></div>
+      <button class="add-btn" onclick="add3DText()">+ Add 3D Text</button>
+    </div>
+  </div>
+
+  <!-- Export -->
+  <div class="sidebar-section">
+    <div class="section-header" onclick="toggleSection(this)">
+      🚀 Export <span class="toggle">▾</span>
+    </div>
+    <div class="section-body">
+      <label class="ctrl">Quality</label>
+      <select id="exportQuality">
+        <option value="high">High — CRF 18 (Best quality, slowest)</option>
+        <option value="medium" selected>Medium — CRF 23 (Balanced)</option>
+        <option value="low">Low — CRF 28 (Fast preview)</option>
+      </select>
+
+      <div class="quality-info">
+        <div class="qi-row"><span class="qi-label">480p export</span><span class="qi-val fast">Fast (real-time)</span></div>
+        <div class="qi-row"><span class="qi-label">720p export</span><span class="qi-val med">~2× slower than realtime</span></div>
+        <div class="qi-row"><span class="qi-label">1080p export</span><span class="qi-val slow">~5× slower than realtime</span></div>
+        <div class="qi-row"><span class="qi-label">4K export</span><span class="qi-val slow">Not recommended (no GPU)</span></div>
+      </div>
+
+      <button class="btn btn-primary" id="btnExport" onclick="startExport()" disabled>
+        🎬 Export Video
+      </button>
+      <div class="progress-bar" id="exportBar" style="display:none">
+        <div class="progress-fill" id="exportFill" style="width:0%"></div>
+      </div>
+      <div class="status-msg" id="exportMsg"></div>
+      <div id="downloadWrap" style="display:none;margin-top:4px">
+        <button class="btn btn-success" onclick="downloadResult()">⬇️ Download Video</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end right panel -->
+</div><!-- end app-body -->
+
+<div class="toast-wrap" id="toasts"></div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+const S = {
+  mainPath: null, musicPath: null,
+  mapOverlays: [],   // [{id, path, x, y, w, h, opacity, showFrom, showTo}]
+  words: [],
+  text3dItems: [],
+  exportOutput: null,
+  videoDuration: 0
+};
+let mapCount = 0, text3dCount = 0;
+
+// ── Section toggle ────────────────────────────────────────────────────────────
+function toggleSection(header) {
+  const body = header.nextElementSibling;
+  header.classList.toggle('collapsed');
+  body.classList.toggle('hidden');
+}
+
+// ── Upload ────────────────────────────────────────────────────────────────────
+async function uploadMain(input) {
+  const file = input.files[0]; if (!file) return;
+  const fd = new FormData(); fd.append('file', file);
+  toast('Uploading video...', 'info');
+  const res = await fetch('/upload/main', {method:'POST', body:fd});
+  const data = await res.json();
+  S.mainPath = data.path;
+  S.videoDuration = data.duration;
+  document.getElementById('mainLabel').textContent = '✅ ' + data.filename;
+  document.getElementById('dzMain').classList.add('loaded');
+  const vid = document.getElementById('videoPreview');
+  vid.src = URL.createObjectURL(file);
+  vid.style.display = 'block';
+  document.getElementById('placeholder').style.display = 'none';
+  document.getElementById('btnTranscribe').disabled = false;
+  document.getElementById('btnExport').disabled = false;
+  markStep(1, 'done');
+  toast('Video uploaded!', 'success');
+}
+
+async function uploadMusic(input) {
+  const file = input.files[0]; if (!file) return;
+  const fd = new FormData(); fd.append('file', file);
+  const res = await fetch('/upload/music', {method:'POST', body:fd});
+  const data = await res.json();
+  S.musicPath = data.path;
+  document.getElementById('musicLabel').textContent = '✅ ' + data.filename;
+  document.getElementById('dzMusic').classList.add('loaded');
+  toast('Music uploaded!', 'success');
+}
+
+// ── Map overlays ──────────────────────────────────────────────────────────────
+function addMapOverlay() {
+  const id = ++mapCount;
+  const overlay = { id, path: null, x:20, y:20, w:320, h:240, opacity:0.9, showFrom:0, showTo:0 };
+  S.mapOverlays.push(overlay);
+  renderMapCards();
+  markStep(2, 'active');
+}
+
+function renderMapCards() {
+  const container = document.getElementById('mapCards');
+  container.innerHTML = '';
+  S.mapOverlays.forEach(ov => {
+    const card = document.createElement('div');
+    card.className = 'item-card';
+    card.id = `mapcard_${ov.id}`;
+    card.innerHTML = `
+      <div class="card-header">
+        <div class="card-num">${ov.id}</div>
+        <div class="card-title">Map Overlay #${ov.id}</div>
+        <button class="remove-btn" onclick="removeMap(${ov.id})">✕</button>
+      </div>
+      <div class="dropzone ${ov.path?'loaded':''}" onclick="document.getElementById('mapFile_${ov.id}').click()" style="padding:10px">
+        <div class="dz-icon">🗺️</div>
+        <div class="dz-label" id="mapLabel_${ov.id}">${ov.path ? '✅ Loaded' : 'Drop Map Recording'}</div>
+        <div class="dz-hint">Screen recording of navigation</div>
+        <input type="file" id="mapFile_${ov.id}" accept="video/*" onchange="uploadMapFile(${ov.id},this)">
+      </div>
+      <div class="row2" style="margin-top:8px">
+        <div><label class="ctrl">Position X</label>
+          <input type="number" value="${ov.x}" min="0" oninput="updateMap(${ov.id},'x',+this.value)"></div>
+        <div><label class="ctrl">Position Y</label>
+          <input type="number" value="${ov.y}" min="0" oninput="updateMap(${ov.id},'y',+this.value)"></div>
+      </div>
+      <div class="row2">
+        <div><label class="ctrl">Width</label>
+          <input type="number" value="${ov.w}" min="100" oninput="updateMap(${ov.id},'w',+this.value)"></div>
+        <div><label class="ctrl">Height</label>
+          <input type="number" value="${ov.h}" min="80" oninput="updateMap(${ov.id},'h',+this.value)"></div>
+      </div>
+      <label class="ctrl">Opacity</label>
+      <div class="range-row">
+        <input type="range" min="0.1" max="1" step="0.05" value="${ov.opacity}" oninput="updateMap(${ov.id},'opacity',+this.value);document.getElementById('opV_${ov.id}').textContent=Math.round(this.value*100)+'%'">
+        <span id="opV_${ov.id}">${Math.round(ov.opacity*100)}%</span>
+      </div>
+      <div class="divider" style="margin:4px 0"></div>
+      <label class="ctrl">⏱️ Show Timer (seconds, 0 = always)</label>
+      <div class="timer-row">
+        <div><label class="ctrl" style="font-size:10px">Show From (s)</label>
+          <input type="number" value="${ov.showFrom}" min="0" step="0.5" oninput="updateMap(${ov.id},'showFrom',+this.value)"></div>
+        <div><label class="ctrl" style="font-size:10px">Show Until (s)</label>
+          <input type="number" value="${ov.showTo}" min="0" step="0.5" oninput="updateMap(${ov.id},'showTo',+this.value)"></div>
+      </div>
+      <div style="font-size:10px;color:var(--text3);margin-top:2px">Set both to 0 to show for full video</div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+async function uploadMapFile(id, input) {
+  const file = input.files[0]; if (!file) return;
+  const fd = new FormData(); fd.append('file', file);
+  toast('Uploading map...', 'info');
+  const res = await fetch('/upload/map', {method:'POST', body:fd});
+  const data = await res.json();
+  const ov = S.mapOverlays.find(o => o.id === id);
+  if (ov) {
+    ov.path = data.path;
+    document.getElementById(`mapLabel_${id}`).textContent = '✅ ' + data.filename;
+    document.getElementById(`mapFile_${id}`).closest('.dropzone').classList.add('loaded');
+    document.getElementById('mapGhost').style.display = 'block';
+    updateMapGhost();
+    markStep(2, 'done');
+    toast('Map uploaded!', 'success');
+  }
+}
+
+function updateMap(id, key, val) {
+  const ov = S.mapOverlays.find(o => o.id === id);
+  if (ov) { ov[key] = val; if (key==='x'||key==='y'||key==='w'||key==='h') updateMapGhost(); }
+}
+
+function removeMap(id) {
+  S.mapOverlays = S.mapOverlays.filter(o => o.id !== id);
+  renderMapCards();
+  if (!S.mapOverlays.length) document.getElementById('mapGhost').style.display = 'none';
+}
+
+// ── Map ghost preview ─────────────────────────────────────────────────────────
+function updateMapGhost() {
+  const ov = S.mapOverlays[0]; if (!ov) return;
+  const wrap = document.getElementById('previewWrap');
+  const vid = document.getElementById('videoPreview');
+  if (!vid.videoWidth) return;
+  const vr = vid.getBoundingClientRect();
+  const wr = wrap.getBoundingClientRect();
+  const sx = vr.width / vid.videoWidth;
+  const sy = vr.height / vid.videoHeight;
+  const ghost = document.getElementById('mapGhost');
+  ghost.style.left = (vr.left - wr.left + ov.x * sx) + 'px';
+  ghost.style.top = (vr.top - wr.top + ov.y * sy) + 'px';
+  ghost.style.width = (ov.w * sx) + 'px';
+  ghost.style.height = (ov.h * sy) + 'px';
+  ghost.style.opacity = ov.opacity;
+}
+
+function toggleDragMode(active) {
+  const layer = document.getElementById('mapDragLayer');
+  layer.classList.toggle('active', active);
+  if (active) initMapDrag();
+}
+
+function initMapDrag() {
+  const ghost = document.getElementById('mapGhost');
+  const wrap = document.getElementById('previewWrap');
+  const vid = document.getElementById('videoPreview');
+  let dragging = false, ox=0, oy=0;
+  ghost.addEventListener('mousedown', e => {
+    if (e.target.id==='resizeHandle') return;
+    dragging=true; const r=ghost.getBoundingClientRect(); ox=e.clientX-r.left; oy=e.clientY-r.top; e.preventDefault();
+  });
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const wr=wrap.getBoundingClientRect(); const vr=vid.getBoundingClientRect();
+    const sx=vid.videoWidth/vr.width; const sy=vid.videoHeight/vr.height;
+    const nx=Math.max(0,(e.clientX-wr.left-ox-(vr.left-wr.left))*sx);
+    const ny=Math.max(0,(e.clientY-wr.top-oy-(vr.top-wr.top))*sy);
+    const ov=S.mapOverlays[0]; if (ov) { ov.x=Math.round(nx); ov.y=Math.round(ny); updateMapGhost(); renderMapCards(); }
+  });
+  document.addEventListener('mouseup', ()=>{ dragging=false; });
+  const handle = document.getElementById('resizeHandle');
+  let resizing=false, sw,sh,smx,smy;
+  handle.addEventListener('mousedown', e => {
+    resizing=true; const vr=vid.getBoundingClientRect();
+    const ov=S.mapOverlays[0]; if (!ov) return;
+    sw=ov.w; sh=ov.h; smx=e.clientX; smy=e.clientY;
+    e.stopPropagation(); e.preventDefault();
+  });
+  document.addEventListener('mousemove', e => {
+    if (!resizing) return;
+    const vr=vid.getBoundingClientRect();
+    const sx=vid.videoWidth/vr.width; const sy=vid.videoHeight/vr.height;
+    const ov=S.mapOverlays[0]; if (!ov) return;
+    ov.w=Math.max(100,Math.round(sw+(e.clientX-smx)*sx));
+    ov.h=Math.max(80,Math.round(sh+(e.clientY-smy)*sy));
+    updateMapGhost(); renderMapCards();
+  });
+  document.addEventListener('mouseup', ()=>{ resizing=false; });
+}
+
+// ── Video player ──────────────────────────────────────────────────────────────
+function onVideoLoaded() {
+  const vid = document.getElementById('videoPreview');
+  S.videoDuration = vid.duration;
+  document.getElementById('durTag').textContent = fmtTime(vid.duration);
+  vid.addEventListener('timeupdate', () => {
+    const p = (vid.currentTime/vid.duration)*100;
+    document.getElementById('tlProgress').style.width = p+'%';
+    document.getElementById('tlPlayhead').style.left = p+'%';
+    document.getElementById('timeDisp').textContent = fmtTime(vid.currentTime)+' / '+fmtTime(vid.duration);
+  });
+}
+function togglePlay() {
+  const v=document.getElementById('videoPreview'); v.paused?v.play():v.pause();
+}
+function seekVideo(e) {
+  const v=document.getElementById('videoPreview'); if (!v.duration) return;
+  const r=e.currentTarget.getBoundingClientRect();
+  v.currentTime = ((e.clientX-r.left)/r.width)*v.duration;
+}
+function fmtTime(s) {
+  const m=Math.floor(s/60); return m+':'+String(Math.floor(s%60)).padStart(2,'0');
+}
+
+// ── Transcribe ────────────────────────────────────────────────────────────────
+async function transcribe() {
+  if (!S.mainPath) return;
+  const fd = new FormData(); fd.append('main_path', S.mainPath);
+  document.getElementById('transcribeBar').style.display='block';
+  document.getElementById('transcribeMsg').textContent='Starting...';
+  const res = await fetch('/transcribe', {method:'POST', body:fd});
+  const {job_id} = await res.json();
+  pollJob(job_id, 'transcribeFill', 'transcribeMsg', data => {
+    if (data.words) {
+      S.words = data.words;
+      renderCaptions();
+      markStep(3,'done');
+      toast(`Transcribed ${data.words.length} words!`,'success');
+    }
+  });
+}
+
+function renderCaptions() {
+  const list = document.getElementById('captionList');
+  list.innerHTML = '';
+  S.words.slice(0,40).forEach(w => {
+    const d = document.createElement('div');
+    d.className='caption-item';
+    d.innerHTML=`<span class="word">${w.word}</span><span class="ctime">${w.start.toFixed(1)}s</span>`;
+    list.appendChild(d);
+  });
+  if (S.words.length>40) {
+    const m=document.createElement('div');
+    m.style.cssText='text-align:center;color:var(--text3);font-size:11px;padding:4px';
+    m.textContent=`+ ${S.words.length-40} more`;
+    list.appendChild(m);
+  }
+}
+
+// ── 3D Text ───────────────────────────────────────────────────────────────────
+function add3DText() {
+  const id = ++text3dCount;
+  S.text3dItems.push({id, text:'', start:0, end:3, x:100, y:100, color:'#ffffff'});
+  const container = document.getElementById('text3dCards');
+  const card = document.createElement('div');
+  card.className='item-card'; card.id=`t3d_${id}`;
+  card.innerHTML=`
+    <div class="card-header">
+      <div class="card-num" style="background:var(--accent2)">${id}</div>
+      <div class="card-title">3D Text #${id}</div>
+      <button class="remove-btn" onclick="remove3DText(${id})">✕</button>
+    </div>
+    <label class="ctrl">Text Content</label>
+    <input type="text" placeholder="Road Trip Mode 🔥" oninput="update3D(${id},'text',this.value)">
+    <div class="row2">
+      <div><label class="ctrl">Show From (s)</label>
+        <input type="number" value="0" min="0" step="0.5" oninput="update3D(${id},'start',+this.value)"></div>
+      <div><label class="ctrl">Show Until (s)</label>
+        <input type="number" value="3" min="0" step="0.5" oninput="update3D(${id},'end',+this.value)"></div>
+    </div>
+    <div class="row2">
+      <div><label class="ctrl">X Position</label>
+        <input type="number" value="100" oninput="update3D(${id},'x',+this.value)"></div>
+      <div><label class="ctrl">Y Position</label>
+        <input type="number" value="100" oninput="update3D(${id},'y',+this.value)"></div>
+    </div>
+    <label class="ctrl">Color</label>
+    <input type="color" value="#ffffff" oninput="update3D(${id},'color',this.value)">
+  `;
+  container.appendChild(card);
+  markStep(4,'done');
+}
+
+function update3D(id, key, val) {
+  const item=S.text3dItems.find(i=>i.id===id); if (item) item[key]=val;
+}
+function remove3DText(id) {
+  S.text3dItems=S.text3dItems.filter(i=>i.id!==id);
+  document.getElementById(`t3d_${id}`)?.remove();
+}
+
+// ── Export ────────────────────────────────────────────────────────────────────
+async function startExport() {
+  if (!S.mainPath) return;
+  const primaryMap = S.mapOverlays.find(o => o.path);
+  const fd = new FormData();
+  fd.append('main_path', S.mainPath);
+  if (primaryMap) {
+    fd.append('map_path', primaryMap.path);
+    fd.append('map_x', primaryMap.x);
+    fd.append('map_y', primaryMap.y);
+    fd.append('map_w', primaryMap.w);
+    fd.append('map_h', primaryMap.h);
+    fd.append('map_opacity', primaryMap.opacity);
+  }
+  if (S.musicPath) fd.append('music_path', S.musicPath);
+  fd.append('caption_style', document.getElementById('captionStyle').value);
+  fd.append('captions', JSON.stringify(S.words));
+  fd.append('text_3d', JSON.stringify(S.text3dItems));
+  fd.append('music_volume', document.getElementById('musicVol').value);
+  fd.append('trim_start', document.getElementById('trimStart').value);
+  fd.append('trim_end', document.getElementById('trimEnd').value);
+  fd.append('output_quality', document.getElementById('exportQuality').value);
+
+  document.getElementById('exportBar').style.display='block';
+  document.getElementById('downloadWrap').style.display='none';
+  document.getElementById('btnExport').disabled=true;
+  document.getElementById('exportMsg').textContent='Starting export...';
+
+  const res = await fetch('/export', {method:'POST', body:fd});
+  const {job_id} = await res.json();
+  pollJob(job_id, 'exportFill', 'exportMsg', data => {
+    if (data.output) {
+      S.exportOutput = data.output;
+      document.getElementById('downloadWrap').style.display='block';
+      document.getElementById('btnExport').disabled=false;
+      markStep(5,'done');
+      toast('Export complete!','success');
+    } else if (data.status==='error') {
+      document.getElementById('btnExport').disabled=false;
+    }
+  });
+}
+
+function downloadResult() {
+  if (S.exportOutput) window.location.href='/download/'+S.exportOutput;
+}
+
+// ── Job polling ───────────────────────────────────────────────────────────────
+function pollJob(jobId, fillId, msgId, onDone) {
+  const iv = setInterval(async () => {
+    const res = await fetch('/job/'+jobId);
+    const data = await res.json();
+    document.getElementById(fillId).style.width=(data.progress||0)+'%';
+    document.getElementById(msgId).textContent=data.message||data.status||'';
+    if (data.status==='done') { clearInterval(iv); onDone(data); }
+    else if (data.status==='error') { clearInterval(iv); onDone(data); toast('Error: '+data.message,'error'); }
+  }, 1200);
+}
+
+// ── Steps ─────────────────────────────────────────────────────────────────────
+function markStep(n, status) {
+  const el=document.getElementById('step'+n);
+  if (status==='done') { el.classList.add('done'); el.classList.remove('active'); }
+  else if (status==='active') { el.classList.add('active'); }
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg, type='info') {
+  const icons={success:'✅',error:'❌',info:'ℹ️'};
+  const wrap=document.getElementById('toasts');
+  const t=document.createElement('div');
+  t.className=`toast ${type}`;
+  t.innerHTML=`<span>${icons[type]||'ℹ️'}</span><span>${msg}</span>`;
+  wrap.appendChild(t);
+  setTimeout(()=>t.remove(),4000);
+}
+
+window.addEventListener('resize', ()=>{ if(S.mapOverlays.length) updateMapGhost(); });
+</script>
+</body>
+</html>
