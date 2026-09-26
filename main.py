@@ -950,4 +950,5 @@ def run_gopro_export(job_id, p):
 
 # ── Static files ───────────────────────────────────────────────────────────────
 app.mount("/static", StaticFiles(directory=str(BASE/"static")), name="static")
+app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 app.mount("/outputs", StaticFiles(directory=str(OUTPUT_DIR)), name="outputs")

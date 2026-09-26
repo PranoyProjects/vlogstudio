@@ -89,7 +89,7 @@ input[type=checkbox]{accent-color:var(--accent)}
 .ql{color:var(--t3)}.qv{font-weight:600}
 .fast{color:var(--green)}.med{color:var(--yellow)}.slow{color:var(--red)}
 .canvas-area{flex:1;background:#050508;display:flex;flex-direction:column;min-width:0}
-.pw{flex:1;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:16px}
+.pw{flex:1;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:8px;background:#000}
 #vp{max-width:100%;max-height:100%;border-radius:8px;object-fit:contain}
 .ph{display:flex;flex-direction:column;align-items:center;gap:10px;color:var(--t3)}
 .ph-i{font-size:56px}
@@ -179,7 +179,7 @@ input[type=checkbox]{accent-color:var(--accent)}
   <div class="tc">
     <div class="tp on" id="tp-upload">
       <div class="st">📹 Main Video</div>
-      <div class="dz" onclick="document.getElementById('inMain').click()">
+      <div class="dz" id="dzMain" onclick="document.getElementById('inMain').click()">
         <div class="dz-i">🎬</div><div class="dz-l" id="mainLbl">Drop Driving Video</div><div class="dz-h">MP4 · MOV · AVI</div>
         <input type="file" id="inMain" accept="video/*" onchange="uploadMain(this)">
       </div>
@@ -212,15 +212,15 @@ input[type=checkbox]{accent-color:var(--accent)}
     <div class="tp" id="tp-grade">
       <div class="st">🎨 Color Grade</div>
       <label class="lb">Brightness</label>
-      <div class="rr"><input type="range" id="bright" min="-1" max="1" step="0.05" value="0" oninput="this.nextElementSibling.textContent=parseFloat(this.value).toFixed(2)"><span>0</span></div>
+      <div class="rr"><input type="range" id="bright" oninput="pvUpdate()" min="-1" max="1" step="0.05" value="0" oninput="this.nextElementSibling.textContent=parseFloat(this.value).toFixed(2)"><span>0</span></div>
       <label class="lb">Contrast</label>
-      <div class="rr"><input type="range" id="contrast" min="0.5" max="2" step="0.05" value="1" oninput="this.nextElementSibling.textContent=parseFloat(this.value).toFixed(2)"><span>1</span></div>
+      <div class="rr"><input type="range" id="contrast" oninput="pvUpdate()" min="0.5" max="2" step="0.05" value="1" oninput="this.nextElementSibling.textContent=parseFloat(this.value).toFixed(2)"><span>1</span></div>
       <label class="lb">Saturation</label>
-      <div class="rr"><input type="range" id="sat" min="0" max="3" step="0.05" value="1" oninput="this.nextElementSibling.textContent=parseFloat(this.value).toFixed(2)"><span>1</span></div>
+      <div class="rr"><input type="range" id="sat" oninput="pvUpdate()" min="0" max="3" step="0.05" value="1" oninput="this.nextElementSibling.textContent=parseFloat(this.value).toFixed(2)"><span>1</span></div>
       <label class="lb">Temperature (Warm ↔ Cool)</label>
-      <div class="rr"><input type="range" id="temp" min="-1" max="1" step="0.05" value="0" oninput="this.nextElementSibling.textContent=parseFloat(this.value).toFixed(2)"><span>0</span></div>
+      <div class="rr"><input type="range" id="temp" oninput="pvUpdate()" min="-1" max="1" step="0.05" value="0" oninput="this.nextElementSibling.textContent=parseFloat(this.value).toFixed(2)"><span>0</span></div>
       <label class="lb">Vignette</label>
-      <div class="rr"><input type="range" id="vig" min="0" max="1" step="0.05" value="0" oninput="this.nextElementSibling.textContent=parseFloat(this.value).toFixed(2)"><span>0</span></div>
+      <div class="rr"><input type="range" id="vig" oninput="pvUpdate()" min="0" max="1" step="0.05" value="0" oninput="this.nextElementSibling.textContent=parseFloat(this.value).toFixed(2)"><span>0</span></div>
       <button class="btn bs" onclick="resetGrade()">↺ Reset</button>
       <div class="div"></div>
       <div class="st">🎞️ LUT Preset</div>
@@ -232,9 +232,9 @@ input[type=checkbox]{accent-color:var(--accent)}
       <div class="div"></div>
       <div class="st">⚙️ Speed & Motion</div>
       <label class="lb">Playback Speed</label>
-      <div class="rr"><input type="range" id="speed" min="0.25" max="4" step="0.25" value="1" oninput="this.nextElementSibling.textContent=this.value+'x'"><span>1x</span></div>
+      <div class="rr"><input type="range" id="speed" oninput="pvUpdate()" min="0.25" max="4" step="0.25" value="1" oninput="this.nextElementSibling.textContent=this.value+'x'"><span>1x</span></div>
       <div class="trow"><label>Reverse Video</label><label class="toggle"><input type="checkbox" id="reverse"><span class="ts"></span></label></div>
-      <div class="trow"><label>Cinematic Black Bars</label><label class="toggle"><input type="checkbox" id="cinBars"><span class="ts"></span></label></div>
+      <div class="trow"><label>Cinematic Black Bars</label><label class="toggle"><input type="checkbox" id="cinBars" onchange="pvUpdate()"><span class="ts"></span></label></div>
     </div>
     <div class="tp" id="tp-fx">
       <div class="st">✨ Effects</div>
@@ -256,9 +256,9 @@ input[type=checkbox]{accent-color:var(--accent)}
       <div class="rr"><input type="range" id="transDur" min="0.3" max="2" step="0.1" value="0.5" oninput="this.nextElementSibling.textContent=this.value+'s'"><span>0.5s</span></div>
       <div class="div"></div>
       <div class="st">🏷️ Watermark</div>
-      <input type="text" id="wmText" placeholder="@YourChannel">
+      <input type="text" id="wmText" oninput="pvUpdate()" placeholder="@YourChannel">
       <label class="lb">Position</label>
-      <select id="wmPos">
+      <select id="wmPos" onchange="pvUpdate()">
         <option value="bottomright">Bottom Right</option><option value="bottomleft">Bottom Left</option>
         <option value="topright">Top Right</option><option value="topleft">Top Left</option>
       </select>
@@ -295,10 +295,10 @@ input[type=checkbox]{accent-color:var(--accent)}
       <div class="div"></div>
       <div class="st">🔧 Lens</div>
       <label class="lb">Fisheye Strength</label>
-      <div class="rr"><input type="range" id="gpFisheye" min="0" max="1" step="0.1" value="0" oninput="this.nextElementSibling.textContent=Math.round(this.value*100)+'%'"><span>0%</span></div>
-      <div class="trow"><label>Superview (Ultra Wide)</label><label class="toggle"><input type="checkbox" id="gpSuperview"><span class="ts"></span></label></div>
+      <div class="rr"><input type="range" id="gpFisheye" oninput="pvUpdate()" min="0" max="1" step="0.1" value="0" oninput="this.nextElementSibling.textContent=Math.round(this.value*100)+'%'"><span>0%</span></div>
+      <div class="trow"><label>Superview (Ultra Wide)</label><label class="toggle"><input type="checkbox" id="gpSuperview" onchange="pvUpdate()"><span class="ts"></span></label></div>
       <label class="lb">Horizon Level</label>
-      <div class="rr"><input type="range" id="gpHorizon" min="-10" max="10" step="0.5" value="0" oninput="this.nextElementSibling.textContent=this.value+'°'"><span>0°</span></div>
+      <div class="rr"><input type="range" id="gpHorizon" oninput="pvUpdate()" min="-10" max="10" step="0.5" value="0" oninput="this.nextElementSibling.textContent=this.value+'°'"><span>0°</span></div>
       <div class="div"></div>
       <div class="st">⚡ Effects</div>
       <div class="fx-grid">
@@ -348,7 +348,15 @@ input[type=checkbox]{accent-color:var(--accent)}
 <div class="canvas-area">
   <div class="pw" id="pw">
     <div class="ph" id="ph"><div class="ph-i">🎬</div><div class="ph-t">Upload your driving video to start</div><div style="font-size:12px;color:var(--t3)">Use the Upload tab</div></div>
-    <video id="vp" controls style="display:none;max-height:100%;max-width:100%" onloadedmetadata="onVL()"></video>
+    <video id="vp" style="display:none;position:absolute;width:1px;height:1px;opacity:0" onloadedmetadata="onVL()" playsinline></video>
+    <canvas id="previewCanvas" style="display:none;width:100%;height:100%;object-fit:contain;border-radius:8px;cursor:pointer" onclick="togglePlayPause()"></canvas>
+    <div id="vpControls" style="display:none;position:absolute;bottom:0;left:0;right:0;padding:8px 12px;background:linear-gradient(transparent,rgba(0,0,0,0.7));display:none;align-items:center;gap:10px">
+      <button onclick="togglePlayPause()" style="background:none;border:none;color:white;font-size:18px;cursor:pointer;padding:0" id="btnPlay">▶</button>
+      <input type="range" id="seekBar" value="0" min="0" max="100" step="0.1" style="flex:1;accent-color:var(--accent);height:4px" oninput="seekVideo(this.value)">
+      <span id="timeDisplay" style="font-size:11px;color:white;font-family:monospace;white-space:nowrap">0:00 / 0:00</span>
+      <button onclick="toggleMute()" style="background:none;border:none;color:white;font-size:16px;cursor:pointer;padding:0" id="btnMute">🔊</button>
+      <button onclick="toggleFullscreen()" style="background:none;border:none;color:white;font-size:16px;cursor:pointer;padding:0">⛶</button>
+    </div>
         <div id="liveCamOverlay" style="display:none;position:absolute;inset:0;background:#000;z-index:20;align-items:center;justify-content:center;flex-direction:column">
       <video id="liveCamVid" autoplay muted playsinline style="display:none"></video>
       <canvas id="liveCamCanvas" style="max-width:100%;max-height:100%;border-radius:8px"></canvas>
@@ -466,7 +474,12 @@ const S={mainPath:null,musicPath:null,gpxPath:null,maps:[],t3d:[],clips:[],words
 let mc=0,tc=0,cc=0;
 function swTab(n,el){document.querySelectorAll('.tp').forEach(p=>p.classList.remove('on'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));document.getElementById('tp-'+n).classList.add('on');el.classList.add('on');}
 function swRTab(n){document.querySelectorAll('.rp2').forEach(p=>p.classList.remove('on'));document.querySelectorAll('.rtb').forEach(t=>t.classList.remove('on'));document.getElementById('rp-'+n).classList.add('on');const idx={cc:0,thumb:1,ai:2,export:3,share:4}[n];if(idx!==undefined)document.querySelectorAll('.rtb')[idx].classList.add('on');}
-async function uploadMain(inp){const f=inp.files[0];if(!f)return;toast('Uploading...','info');const fd=new FormData();fd.append('file',f);const r=await fetch('/upload/video',{method:'POST',body:fd});const d=await r.json();S.mainPath=d.path;document.getElementById('mainLbl').textContent='✅ '+d.filename;document.getElementById('dzMain'||inp.closest('.dz')).classList.add('ok');const vp=document.getElementById('vp');vp.src=URL.createObjectURL(f);vp.style.display='block';document.getElementById('ph').style.display='none';['btnTr','btnExp','btnThumb','btnHL'].forEach(id=>document.getElementById(id).disabled=false);markStep(1,'done');toast('Video uploaded!','success');}
+async function uploadMain(inp){const f=inp.files[0];if(!f)return;toast('Uploading...','info');const fd=new FormData();fd.append('file',f);const r=await fetch('/upload/video',{method:'POST',body:fd});const d=await r.json();S.mainPath=d.path;document.getElementById('mainLbl').textContent='✅ '+d.filename;document.getElementById('dzMain').classList.add('ok');const vp=document.getElementById('vp');const localUrl=URL.createObjectURL(f);vp.src=localUrl;S.mainServerUrl='/uploads/'+d.path.split('/').pop();
+  vp.style.display='block';
+  document.getElementById('ph').style.display='none';
+  const pc=document.getElementById('previewCanvas');
+  pc.style.display='block';
+  vp.oncanplay=()=>{startPreviewLoop();vp.play();};['btnTr','btnExp','btnThumb','btnHL','btnGPExport'].forEach(id=>document.getElementById(id)&&(document.getElementById(id).disabled=false));markStep(1,'done');toast('Video uploaded!','success');}
 async function uploadMusic(inp){const f=inp.files[0];if(!f)return;const fd=new FormData();fd.append('file',f);const r=await fetch('/upload/music',{method:'POST',body:fd});const d=await r.json();S.musicPath=d.path;document.getElementById('musicLbl').textContent='✅ '+d.filename;toast('Music uploaded!','success');}
 async function uploadGPX(inp){const f=inp.files[0];if(!f)return;const fd=new FormData();fd.append('file',f);const r=await fetch('/upload/gpx',{method:'POST',body:fd});const d=await r.json();S.gpxPath=d.path;document.getElementById('gpxLbl').textContent='✅ '+d.filename;toast('GPX loaded!','success');}
 async function uploadLUT(inp){const f=inp.files[0];if(!f)return;const fd=new FormData();fd.append('file',f);const r=await fetch('/upload/lut',{method:'POST',body:fd});const d=await r.json();S.lutName=d.name;document.getElementById('lutLbl').textContent='✅ '+d.name;const sel=document.getElementById('lutSel');const opt=document.createElement('option');opt.value=d.name;opt.textContent=d.name;opt.selected=true;sel.appendChild(opt);toast('LUT loaded!','success');}
@@ -508,16 +521,204 @@ function poll(id,fi,mi,cb){const iv=setInterval(async()=>{const r=await fetch('/
 function markStep(n,st){const e=document.getElementById('s'+n);if(st==='done'){e.classList.add('done');e.classList.remove('active');}else if(st==='active')e.classList.add('active');}
 function toast(msg,type='info'){const w=document.getElementById('toasts');const t=document.createElement('div');t.className='toast '+(type==='success'?'success':type==='error'?'error':'');const ic={success:'✅',error:'❌',info:'ℹ️'};t.innerHTML=`<span>${ic[type]||'ℹ️'}</span><span>${msg}</span>`;w.appendChild(t);setTimeout(()=>t.remove(),4000);}
 
+
+// ── Real-time Preview Engine ──────────────────────────────────────────────────
+const PV = {
+  animFrame: null,
+  // Grade
+  bright:0, contrast:1, sat:1, temp:0, vig:0,
+  // Effects
+  cinematic:false, glitch:false, shake:false, reverse:false,
+  watermark:'', watermarkPos:'bottomright',
+  // GoPro
+  fisheye:0, superview:false, horizon:0,
+  nightMode:false, protune:false, gopro:false, flat:false,
+  // Speed
+  speed:1,
+  // Shake state
+  shakeX:0, shakeY:0, shakeFrame:0,
+};
+
+function pvUpdate() {
+  const g  = id => document.getElementById(id);
+  const gv = (id,def) => parseFloat(g(id)?.value ?? def);
+  const gc = id => g(id)?.checked ?? false;
+
+  // Grade tab
+  PV.bright    = gv('bright', 0);
+  PV.contrast  = gv('contrast', 1);
+  PV.sat       = gv('sat', 1);
+  PV.temp      = gv('temp', 0);
+  PV.vig       = gv('vig', 0);
+  PV.cinematic = gc('cinBars');
+  PV.watermark = (g('wmText')?.value||'').replace(/[<>"'\\]/g,'').slice(0,80);
+  PV.watermarkPos = g('wmPos')?.value || 'bottomright';
+  // Effects
+  PV.glitch    = S.fx?.has('glitch') ?? false;
+  PV.shake     = S.fx?.has('shake') ?? false;
+  // GoPro tab
+  PV.fisheye   = gv('gpFisheye', 0);
+  PV.superview = gc('gpSuperview');
+  PV.horizon   = gv('gpHorizon', 0);
+  PV.nightMode = GP.fx?.has('night') || GP.preset==='night';
+  PV.protune   = GP.preset==='protune';
+  PV.gopro     = GP.preset==='gopro';
+  PV.flat      = GP.preset==='flat';
+  // Speed (live playbackRate)
+  PV.speed     = gv('speed', 1);
+  const vid = document.getElementById('vp');
+  if(vid) vid.playbackRate = PV.speed;
+}
+
+function startPreviewLoop() {
+  const vid    = document.getElementById('vp');
+  const canvas = document.getElementById('previewCanvas');
+  const ctx    = canvas.getContext('2d');
+  const ctrls  = document.getElementById('vpControls');
+  if(ctrls) ctrls.style.display = 'flex';
+  if(PV.animFrame) cancelAnimationFrame(PV.animFrame);
+
+  function render() {
+    if (!vid || !vid.src || vid.readyState < 2) {
+      PV.animFrame = requestAnimationFrame(render); return;
+    }
+
+    const W = vid.videoWidth  || 1920;
+    const H = vid.videoHeight || 1080;
+    canvas.width  = W;
+    canvas.height = H;
+
+    ctx.save();
+
+    // Shake
+    let ox = 0, oy = 0;
+    if (PV.shake) {
+      PV.shakeFrame++;
+      if (PV.shakeFrame % 3 === 0) {
+        PV.shakeX = (Math.random()-0.5)*14;
+        PV.shakeY = (Math.random()-0.5)*10;
+      }
+      ox = PV.shakeX; oy = PV.shakeY;
+    }
+
+    // Horizon rotate
+    if (PV.horizon !== 0) {
+      ctx.translate(W/2, H/2);
+      ctx.rotate(PV.horizon * Math.PI/180);
+      ctx.translate(-W/2, -H/2);
+    }
+
+    // Superview — crop center 70%, stretch to full
+    let sx=0, sy=0, sw=W, sh=H;
+    if (PV.superview) { sx = W*0.15; sw = W*0.7; }
+
+    // Build CSS filter
+    let b = PV.bright, c = PV.contrast, s = PV.sat, t = PV.temp;
+    if (PV.nightMode) { b = Math.min(2, b+0.45); }
+    if (PV.protune)   { b += 0.05; c = Math.min(5, c*1.3); s = Math.min(5, s*1.4); }
+    if (PV.gopro)     { b += 0.05; c = Math.min(5, c*1.25); s = Math.min(5, s*1.3); }
+    if (PV.flat)      { c = Math.max(0.1, c*0.8); s = Math.max(0, s*0.7); }
+
+    let filter = `brightness(${Math.max(0,1+b).toFixed(2)}) contrast(${c.toFixed(2)}) saturate(${Math.max(0,s).toFixed(2)})`;
+    if (t > 0) filter += ` sepia(${(t*0.55).toFixed(2)})`;
+    if (t < 0) filter += ` hue-rotate(${(-t*25).toFixed(0)}deg)`;
+    ctx.filter = filter;
+
+    ctx.drawImage(vid, sx, sy, sw, sh, ox, oy, W, H);
+    ctx.restore();
+    ctx.filter = 'none';
+
+    // Vignette
+    if (PV.vig > 0) {
+      const vg = ctx.createRadialGradient(W/2,H/2,H*0.2, W/2,H/2,H*0.85);
+      vg.addColorStop(0,'rgba(0,0,0,0)');
+      vg.addColorStop(1,`rgba(0,0,0,${Math.min(0.95,PV.vig*0.92)})`);
+      ctx.fillStyle=vg; ctx.fillRect(0,0,W,H);
+    }
+
+    // Fisheye edge darkening
+    if (PV.fisheye > 0) {
+      const fg = ctx.createRadialGradient(W/2,H/2,H*0.2, W/2,H/2,H*0.72);
+      fg.addColorStop(0,'rgba(0,0,0,0)');
+      fg.addColorStop(1,`rgba(0,0,0,${Math.min(0.8,PV.fisheye*0.6)})`);
+      ctx.fillStyle=fg; ctx.fillRect(0,0,W,H);
+    }
+
+    // Glitch
+    if (PV.glitch && Math.random() > 0.75) {
+      const gy  = Math.random()*H;
+      const gh  = Math.random()*24+4;
+      const gof = (Math.random()-0.5)*40;
+      ctx.save();
+      ctx.drawImage(canvas, 0,gy,W,gh, gof,gy,W,gh);
+      ctx.fillStyle = Math.random()>0.5?'rgba(255,0,0,0.08)':'rgba(0,255,255,0.08)';
+      ctx.fillRect(0,gy,W,gh);
+      ctx.restore();
+    }
+
+    // Cinematic bars
+    if (PV.cinematic) {
+      const bh = Math.round(H*0.08);
+      ctx.fillStyle = 'black';
+      ctx.fillRect(0,0,W,bh);
+      ctx.fillRect(0,H-bh,W,bh);
+    }
+
+    // Watermark
+    if (PV.watermark) {
+      const fs = Math.round(H*0.03);
+      ctx.font = `bold ${fs}px Arial`;
+      const tw = ctx.measureText(PV.watermark).width;
+      const pad = 20;
+      const px  = PV.watermarkPos.includes('right')  ? W-tw-pad : pad;
+      const py  = PV.watermarkPos.includes('bottom') ? H-pad    : fs+pad;
+      ctx.strokeStyle='rgba(0,0,0,0.65)'; ctx.lineWidth=Math.max(2,fs*0.08);
+      ctx.strokeText(PV.watermark,px,py);
+      ctx.fillStyle='rgba(255,255,255,0.85)';
+      ctx.fillText(PV.watermark,px,py);
+    }
+
+    // GoPro timestamp
+    if (PV.gopro||PV.protune) {
+      const ts = new Date().toLocaleTimeString();
+      ctx.font=`bold ${Math.round(H*0.018)}px monospace`;
+      ctx.fillStyle='rgba(255,255,255,0.75)';
+      ctx.fillText(ts, 14, H-12);
+    }
+
+    // Seekbar + time
+    if (vid.duration) {
+      const sb = document.getElementById('seekBar');
+      if(sb) sb.value = (vid.currentTime/vid.duration)*100;
+      const td = document.getElementById('timeDisplay');
+      if(td) { const f=t=>{const m=Math.floor(t/60),s=Math.floor(t%60);return m+':'+(s<10?'0':'')+s;}; td.textContent=f(vid.currentTime)+' / '+f(vid.duration); }
+    }
+    const bp = document.getElementById('btnPlay');
+    if(bp) bp.textContent = vid.paused ? '▶' : '⏸';
+
+    PV.animFrame = requestAnimationFrame(render);
+  }
+  render();
+}
+
+function stopPreviewLoop() { if(PV.animFrame) cancelAnimationFrame(PV.animFrame); }
+
+function togglePlayPause() { const v=document.getElementById('vp'); v.paused?v.play():v.pause(); }
+function seekVideo(val)    { const v=document.getElementById('vp'); if(v.duration) v.currentTime=(val/100)*v.duration; }
+function toggleMute()      { const v=document.getElementById('vp'); v.muted=!v.muted; document.getElementById('btnMute').textContent=v.muted?'🔇':'🔊'; }
+function toggleFullscreen(){ const c=document.getElementById('previewCanvas'); document.fullscreenElement?document.exitFullscreen():c.requestFullscreen(); }
+function sanitizePreview(t){ return t.replace(/[<>"']/g,'').slice(0,80); }
+
 // ── GoPro ─────────────────────────────────────────────────────────────────────
 const GP={preset:null,fx:new Set(),output:null,stream:null,mediaRecorder:null,chunks:[],liveFilter:'none',animFrame:null,recStart:null,recTimerIv:null};
 const GP_FILTERS={none:'',protune:'contrast(1.3) saturate(1.4) brightness(1.05)',night:'brightness(1.4) contrast(0.9)',vivid:'saturate(2) contrast(1.2)',mono:'grayscale(1) contrast(1.2)',warm:'sepia(0.4) saturate(1.3)',cool:'hue-rotate(20deg) saturate(0.9)'};
 
-function setGPPre(name,el){document.querySelectorAll('[id^=gpre-]').forEach(e=>e.classList.remove('on'));el.classList.add('on');GP.preset=name;
+function setGPPre(name,el){setTimeout(pvUpdate,50);document.querySelectorAll('[id^=gpre-]').forEach(e=>e.classList.remove('on'));el.classList.add('on');GP.preset=name;
   if(name==='gopro'){document.getElementById('gpFisheye').value=0.4;document.getElementById('gpFisheye').nextElementSibling.textContent='40%';document.getElementById('gpSuperview').checked=true;}
   if(name==='protune'){document.getElementById('gpFisheye').value=0.3;document.getElementById('gpFisheye').nextElementSibling.textContent='30%';}
   if(name==='night'){GP.fx.add('night');document.getElementById('gpfx-night').classList.add('on');}
 }
-function togGPFX(name,el){if(GP.fx.has(name)){GP.fx.delete(name);el.classList.remove('on');}else{GP.fx.add(name);el.classList.add('on');}}
+function togGPFX(name,el){setTimeout(pvUpdate,50);if(GP.fx.has(name)){GP.fx.delete(name);el.classList.remove('on');}else{GP.fx.add(name);el.classList.add('on');}}
 
 async function doGPExport(){
   if(!S.mainPath){toast('Upload a video first','error');return;}
