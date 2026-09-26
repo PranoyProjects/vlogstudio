@@ -171,6 +171,7 @@ input[type=checkbox]{accent-color:var(--accent)}
     <div class="tab" onclick="swTab('grade',this)">🎨 Grade</div>
     <div class="tab" onclick="swTab('fx',this)">✨ FX</div>
     <div class="tab" onclick="swTab('overlay',this)">🗺️ Overlay</div>
+    <div class="tab" onclick="swTab('gopro',this)">🎥 GoPro</div>
   </div>
   <div class="tc">
     <div class="tp on" id="tp-upload">
@@ -278,12 +279,78 @@ input[type=checkbox]{accent-color:var(--accent)}
       <div id="t3dCards"></div>
       <button class="ab" onclick="add3D()">+ Add 3D Text</button>
     </div>
+
+    <!-- GoPro tab -->
+    <div class="tp" id="tp-gopro">
+      <div class="st">🎨 GoPro Presets</div>
+      <div class="fx-grid">
+        <div class="fx" id="gpre-protune" onclick="setGPPre('protune',this)"><span style="font-size:16px;display:block;margin-bottom:2px">🎬</span>Protune</div>
+        <div class="fx" id="gpre-night" onclick="setGPPre('night',this)"><span style="font-size:16px;display:block;margin-bottom:2px">🌙</span>Night</div>
+        <div class="fx" id="gpre-gopro" onclick="setGPPre('gopro',this)"><span style="font-size:16px;display:block;margin-bottom:2px">📷</span>GoPro Look</div>
+        <div class="fx" id="gpre-flat" onclick="setGPPre('flat',this)"><span style="font-size:16px;display:block;margin-bottom:2px">🎞️</span>Flat/Log</div>
+      </div>
+      <div class="div"></div>
+      <div class="st">🔧 Lens</div>
+      <label class="lb">Fisheye Strength</label>
+      <div class="rr"><input type="range" id="gpFisheye" min="0" max="1" step="0.1" value="0" oninput="this.nextElementSibling.textContent=Math.round(this.value*100)+'%'"><span>0%</span></div>
+      <div class="trow"><label>Superview (Ultra Wide)</label><label class="toggle"><input type="checkbox" id="gpSuperview"><span class="ts"></span></label></div>
+      <label class="lb">Horizon Level</label>
+      <div class="rr"><input type="range" id="gpHorizon" min="-10" max="10" step="0.5" value="0" oninput="this.nextElementSibling.textContent=this.value+'°'"><span>0°</span></div>
+      <div class="div"></div>
+      <div class="st">⚡ Effects</div>
+      <div class="fx-grid">
+        <div class="fx" id="gpfx-stab" onclick="togGPFX('stab',this)"><span style="font-size:14px">🎯</span> Stabilize</div>
+        <div class="fx" id="gpfx-boom" onclick="togGPFX('boom',this)"><span style="font-size:14px">🔄</span> Boomerang</div>
+        <div class="fx" id="gpfx-wind" onclick="togGPFX('wind',this)"><span style="font-size:14px">🎤</span> Wind Noise</div>
+        <div class="fx" id="gpfx-night" onclick="togGPFX('night',this)"><span style="font-size:14px">🌙</span> Night Mode</div>
+      </div>
+      <div class="div"></div>
+      <div class="st">⏱️ Time</div>
+      <div class="r2">
+        <div><label class="lb">Timelapse (every N frames)</label><input type="number" id="gpTimelapse" value="0" min="0" max="60"></div>
+        <div><label class="lb">Burst Photos</label><input type="number" id="gpBurst" value="0" min="0" max="50"></div>
+      </div>
+      <div class="div"></div>
+      <div class="st">📹 Live Camera</div>
+      <button class="btn bp" id="btnCamStart" onclick="startLiveCam()">📷 Start Camera</button>
+      <button class="btn bs" id="btnCamStop" onclick="stopLiveCam()" disabled>⏹ Stop Camera</button>
+      <div id="liveCamCtrls" style="display:none;margin-top:6px">
+        <label class="lb">Live Filter</label>
+        <select id="liveFiltSel" onchange="GP.liveFilter=this.value" style="margin-bottom:6px">
+          <option value="none">Normal</option>
+          <option value="protune">Protune</option>
+          <option value="night">Night</option>
+          <option value="vivid">Vivid</option>
+          <option value="mono">Mono/BW</option>
+          <option value="warm">Warm</option>
+          <option value="cool">Cool</option>
+        </select>
+        <div class="trow"><label>Rule-of-thirds Grid</label><label class="toggle"><input type="checkbox" id="liveGridOn"><span class="ts"></span></label></div>
+        <div class="trow"><label>Mirror Flip</label><label class="toggle"><input type="checkbox" id="liveMirrorOn"><span class="ts"></span></label></div>
+        <div class="r2" style="margin-top:6px">
+          <button class="btn br" id="btnRec" onclick="startRec()">⏺ Record</button>
+          <button class="btn bs" id="btnStopRec" onclick="stopRec()" disabled>⏹ Stop</button>
+        </div>
+        <button class="btn by" onclick="takeSnap()" style="margin-top:4px">📸 Snapshot</button>
+        <div id="recTimer" style="display:none;text-align:center;font-size:13px;font-weight:700;color:var(--red);font-family:monospace;margin-top:4px">00:00</div>
+      </div>
+      <div class="div"></div>
+      <button class="btn bp" id="btnGPExport" onclick="doGPExport()" disabled>🎬 Apply GoPro & Export</button>
+      <div class="pb" id="gpbar" style="display:none"><div class="pf" id="gpfill" style="width:0%"></div></div>
+      <div class="sm" id="gpmsg"></div>
+      <div id="gpDlWrap" style="display:none;margin-top:4px"><button class="btn bg" onclick="dlGP()">⬇️ Download</button></div>
+    </div>
   </div>
 </div>
 <div class="canvas-area">
   <div class="pw" id="pw">
     <div class="ph" id="ph"><div class="ph-i">🎬</div><div class="ph-t">Upload your driving video to start</div><div style="font-size:12px;color:var(--t3)">Use the Upload tab</div></div>
     <video id="vp" controls style="display:none;max-height:100%;max-width:100%" onloadedmetadata="onVL()"></video>
+        <div id="liveCamOverlay" style="display:none;position:absolute;inset:0;background:#000;z-index:20;align-items:center;justify-content:center;flex-direction:column">
+      <video id="liveCamVid" autoplay muted playsinline style="display:none"></video>
+      <canvas id="liveCamCanvas" style="max-width:100%;max-height:100%;border-radius:8px"></canvas>
+      <div id="recBadge" style="display:none;position:absolute;top:12px;left:12px;background:rgba(239,68,68,.9);color:white;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;align-items:center;gap:6px">● REC</div>
+    </div>
     <div id="mapLayer">
       <div class="mg" id="mg0" style="display:none"><div class="mg-l">🗺️ MAP</div><div class="mg-r" id="mgr"></div></div>
     </div>
@@ -437,6 +504,114 @@ async function addComment(){if(!S.shareToken){toast('Create share link first','e
 function poll(id,fi,mi,cb){const iv=setInterval(async()=>{const r=await fetch('/job/'+id);const d=await r.json();if(document.getElementById(fi))document.getElementById(fi).style.width=(d.progress||0)+'%';if(document.getElementById(mi))document.getElementById(mi).textContent=d.message||d.status||'';if(d.status==='done'){clearInterval(iv);cb(d);}else if(d.status==='error'){clearInterval(iv);cb(d);toast('Error: '+(d.message||'').slice(0,60),'error');}},1200);}
 function markStep(n,st){const e=document.getElementById('s'+n);if(st==='done'){e.classList.add('done');e.classList.remove('active');}else if(st==='active')e.classList.add('active');}
 function toast(msg,type='info'){const w=document.getElementById('toasts');const t=document.createElement('div');t.className='toast '+(type==='success'?'success':type==='error'?'error':'');const ic={success:'✅',error:'❌',info:'ℹ️'};t.innerHTML=`<span>${ic[type]||'ℹ️'}</span><span>${msg}</span>`;w.appendChild(t);setTimeout(()=>t.remove(),4000);}
+
+// ── GoPro ─────────────────────────────────────────────────────────────────────
+const GP={preset:null,fx:new Set(),output:null,stream:null,mediaRecorder:null,chunks:[],liveFilter:'none',animFrame:null,recStart:null,recTimerIv:null};
+const GP_FILTERS={none:'',protune:'contrast(1.3) saturate(1.4) brightness(1.05)',night:'brightness(1.4) contrast(0.9)',vivid:'saturate(2) contrast(1.2)',mono:'grayscale(1) contrast(1.2)',warm:'sepia(0.4) saturate(1.3)',cool:'hue-rotate(20deg) saturate(0.9)'};
+
+function setGPPre(name,el){document.querySelectorAll('[id^=gpre-]').forEach(e=>e.classList.remove('on'));el.classList.add('on');GP.preset=name;
+  if(name==='gopro'){document.getElementById('gpFisheye').value=0.4;document.getElementById('gpFisheye').nextElementSibling.textContent='40%';document.getElementById('gpSuperview').checked=true;}
+  if(name==='protune'){document.getElementById('gpFisheye').value=0.3;document.getElementById('gpFisheye').nextElementSibling.textContent='30%';}
+  if(name==='night'){GP.fx.add('night');document.getElementById('gpfx-night').classList.add('on');}
+}
+function togGPFX(name,el){if(GP.fx.has(name)){GP.fx.delete(name);el.classList.remove('on');}else{GP.fx.add(name);el.classList.add('on');}}
+
+async function doGPExport(){
+  if(!S.mainPath){toast('Upload a video first','error');return;}
+  const fd=new FormData();
+  fd.append('video_path',S.mainPath);
+  fd.append('fisheye',document.getElementById('gpFisheye').value);
+  fd.append('stabilize',GP.fx.has('stab'));
+  fd.append('protune',GP.preset==='protune'||GP.preset==='gopro');
+  fd.append('superview',document.getElementById('gpSuperview').checked);
+  fd.append('timelapse',document.getElementById('gpTimelapse').value);
+  fd.append('boomerang',GP.fx.has('boom'));
+  fd.append('wind_noise',GP.fx.has('wind'));
+  fd.append('horizon_level',document.getElementById('gpHorizon').value);
+  fd.append('night_mode',GP.fx.has('night')||GP.preset==='night');
+  fd.append('burst_count',document.getElementById('gpBurst').value);
+  fd.append('output_quality','medium');
+  document.getElementById('gpbar').style.display='block';
+  document.getElementById('btnGPExport').disabled=true;
+  const r=await fetch('/gopro/export',{method:'POST',body:fd});
+  const {job_id}=await r.json();
+  poll(job_id,'gpfill','gpmsg',d=>{
+    if(d.output){GP.output=d.output;document.getElementById('gpDlWrap').style.display='block';document.getElementById('btnGPExport').disabled=false;toast('GoPro export done!','success');}
+    else if(d.status==='error'){document.getElementById('btnGPExport').disabled=false;}
+  });
+}
+function dlGP(){if(GP.output)window.location.href='/download/'+GP.output;}
+
+async function startLiveCam(){
+  try{
+    GP.stream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:1920},height:{ideal:1080}},audio:true});
+    const vid=document.getElementById('liveCamVid');
+    vid.srcObject=GP.stream;await vid.play();
+    const ov=document.getElementById('liveCamOverlay');ov.style.display='flex';
+    document.getElementById('btnCamStart').disabled=true;
+    document.getElementById('btnCamStop').disabled=false;
+    document.getElementById('liveCamCtrls').style.display='block';
+    document.getElementById('btnGPExport').disabled=false;
+    startCamRender();toast('Camera started!','success');
+  }catch(e){toast('Camera error: '+e.message,'error');}
+}
+function stopLiveCam(){
+  if(GP.stream)GP.stream.getTracks().forEach(t=>t.stop());GP.stream=null;
+  if(GP.animFrame)cancelAnimationFrame(GP.animFrame);
+  document.getElementById('liveCamOverlay').style.display='none';
+  document.getElementById('btnCamStart').disabled=false;
+  document.getElementById('btnCamStop').disabled=true;
+  document.getElementById('liveCamCtrls').style.display='none';
+}
+function startCamRender(){
+  const vid=document.getElementById('liveCamVid');const canvas=document.getElementById('liveCamCanvas');const ctx=canvas.getContext('2d');
+  function render(){
+    if(!GP.stream)return;
+    canvas.width=vid.videoWidth||1280;canvas.height=vid.videoHeight||720;
+    ctx.save();
+    if(document.getElementById('liveMirrorOn').checked){ctx.translate(canvas.width,0);ctx.scale(-1,1);}
+    ctx.filter=GP_FILTERS[GP.liveFilter]||'none';
+    ctx.drawImage(vid,0,0,canvas.width,canvas.height);
+    ctx.restore();
+    if(document.getElementById('liveGridOn').checked){
+      ctx.strokeStyle='rgba(255,255,255,0.3)';ctx.lineWidth=1;
+      [1/3,2/3].forEach(f=>{ctx.beginPath();ctx.moveTo(canvas.width*f,0);ctx.lineTo(canvas.width*f,canvas.height);ctx.stroke();ctx.beginPath();ctx.moveTo(0,canvas.height*f);ctx.lineTo(canvas.width,canvas.height*f);ctx.stroke();});
+    }
+    ctx.fillStyle='rgba(255,255,255,0.7)';ctx.font='bold 12px monospace';ctx.fillText(new Date().toLocaleTimeString(),10,canvas.height-10);
+    GP.animFrame=requestAnimationFrame(render);
+  }render();
+}
+function startRec(){
+  if(!GP.stream)return;GP.chunks=[];
+  const cs=document.getElementById('liveCamCanvas').captureStream(30);
+  GP.stream.getAudioTracks().forEach(t=>cs.addTrack(t));
+  const mime=MediaRecorder.isTypeSupported('video/webm;codecs=vp9')?'video/webm;codecs=vp9':'video/webm';
+  GP.mediaRecorder=new MediaRecorder(cs,{mimeType:mime});
+  GP.mediaRecorder.ondataavailable=e=>{if(e.data.size>0)GP.chunks.push(e.data);};
+  GP.mediaRecorder.onstop=()=>{
+    const blob=new Blob(GP.chunks,{type:'video/webm'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+    a.download='gopro_'+new Date().toISOString().slice(11,19).replace(/:/g,'')+'.webm';a.click();
+    toast('Recording saved!','success');
+  };
+  GP.mediaRecorder.start(100);GP.recStart=Date.now();
+  document.getElementById('btnRec').disabled=true;document.getElementById('btnStopRec').disabled=false;
+  document.getElementById('recBadge').style.display='flex';document.getElementById('recTimer').style.display='block';
+  GP.recTimerIv=setInterval(()=>{const e=Math.floor((Date.now()-GP.recStart)/1000);document.getElementById('recTimer').textContent=String(Math.floor(e/60)).padStart(2,'0')+':'+String(e%60).padStart(2,'0');},1000);
+  toast('Recording!','success');
+}
+function stopRec(){
+  if(GP.mediaRecorder&&GP.mediaRecorder.state!=='inactive')GP.mediaRecorder.stop();
+  clearInterval(GP.recTimerIv);
+  document.getElementById('btnRec').disabled=false;document.getElementById('btnStopRec').disabled=true;
+  document.getElementById('recBadge').style.display='none';document.getElementById('recTimer').style.display='none';
+}
+function takeSnap(){
+  const a=document.createElement('a');a.href=document.getElementById('liveCamCanvas').toDataURL('image/jpeg',0.9);
+  a.download='snap_'+new Date().toISOString().slice(11,19).replace(/:/g,'')+'.jpg';a.click();
+  toast('Snapshot saved!','success');
+}
+
 window.addEventListener('resize',()=>{if(S.maps.length)updMGhost();});
 </script>
 </body>

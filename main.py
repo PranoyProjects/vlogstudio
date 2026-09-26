@@ -66,6 +66,10 @@ def get_video_info(path):
 @app.get("/", response_class=HTMLResponse)
 async def root(): return (BASE/"templates"/"index.html").read_text()
 
+
+@app.get("/gopro", response_class=HTMLResponse)
+async def gopro_page(): return (BASE/"templates"/"gopro.html").read_text()
+
 @app.get("/route", response_class=HTMLResponse)
 async def route_page(): return (BASE/"templates"/"route_animator.html").read_text()
 
@@ -717,3 +721,172 @@ def write_ass(words, path, style):
 # ── Static files ──────────────────────────────────────────────────────────────
 app.mount("/static", StaticFiles(directory=str(BASE/"static")), name="static")
 app.mount("/outputs", StaticFiles(directory=str(OUTPUT_DIR)), name="outputs")
+
+# ── GoPro Effects Export ──────────────────────────────────────────────────────
+@app.post("/gopro/export")
+async def gopro_export(bg: BackgroundTasks,
+    video_path: str = Form(...),
+    fisheye: float = Form(0),        # 0-1 strength
+    stabilize: bool = Form(False),
+    protune: bool = Form(False),
+    superview: bool = Form(False),
+    timelapse: int = Form(0),        # 0=off, else every N frames
+    boomerang: bool = Form(False),
+    wind_noise: bool = Form(False),
+    horizon_level: float = Form(0),  # degrees to rotate
+    night_mode: bool = Form(False),
+    burst_count: int = Form(0),      # 0=off, else N frames
+    output_quality: str = Form("medium"),
+):
+    job_id = str(uuid.uuid4())
+    params = dict(video_path=video_path, fisheye=fisheye, stabilize=stabilize,
+        protune=protune, superview=superview, timelapse=timelapse,
+        boomerang=boomerang, wind_noise=wind_noise, horizon_level=horizon_level,
+        night_mode=night_mode, burst_count=burst_count, output_quality=output_quality)
+    job_update(job_id, status="queued", progress=0)
+    bg.add_task(run_gopro_export, job_id, params)
+    return {"job_id": job_id}
+
+def run_gopro_export(job_id, p):
+    try:
+        path = p["video_path"]
+        crf = {"high":"18","medium":"23","low":"28"}.get(p.get("output_quality","medium"),"23")
+        output = OUTPUT_DIR / f"gopro_{job_id[:8]}.mp4"
+
+        job_update(job_id, status="running", progress=10, message="Applying GoPro effects...")
+
+        vf = []
+        af = []
+
+        # Fisheye lens effect
+        fisheye = float(p.get("fisheye", 0))
+        if fisheye > 0:
+            k1 = -0.3 * fisheye
+            k2 = 0.1 * fisheye
+            vf.append(f"lenscorrection=k1={k1}:k2={k2}")
+
+        # Superview — stretch edges wide
+        if p.get("superview"):
+            vf.append("scale=iw*1.33:ih,crop=iw/1.33:ih")
+
+        # Horizon leveling
+        angle = float(p.get("horizon_level", 0))
+        if angle != 0:
+            vf.append(f"rotate={angle}*PI/180:fillcolor=black")
+
+        # Protune color grade (GoPro flat → punchy)
+        if p.get("protune"):
+            vf.append("eq=contrast=1.3:saturation=1.4:brightness=0.05")
+            vf.append("curves=r='0/0 0.5/0.55 1/1':g='0/0 0.5/0.5 1/1':b='0/0 0.5/0.45 1/0.95'")
+
+        # Night mode — lift shadows, brighten
+        if p.get("night_mode"):
+            vf.append("eq=brightness=0.15:contrast=1.1:gamma=1.3")
+            vf.append("curves=all='0/0.1 0.3/0.45 1/1'")
+
+        # Timelapse — keep every Nth frame
+        tl = int(p.get("timelapse", 0))
+        if tl > 1:
+            vf.append(f"select='not(mod(n\\,{tl}))',setpts=N/FRAME_RATE/TB")
+            af.append(f"atempo=2.0")
+
+        # Wind noise reduction
+        if p.get("wind_noise"):
+            af.append("highpass=f=200,lowpass=f=3000")
+
+        vf_str = ",".join(vf) if vf else "copy"
+        af_str = ",".join(af) if af else "acopy"
+
+        job_update(job_id, progress=30, message="Encoding...")
+
+        if p.get("boomerang"):
+            # Forward + reverse loop
+            fwd = OUTPUT_DIR / f"fwd_{job_id[:6]}.mp4"
+            rev = OUTPUT_DIR / f"rev_{job_id[:6]}.mp4"
+            concat = OUTPUT_DIR / f"concat_{job_id[:6]}.txt"
+
+            subprocess.run(["ffmpeg","-y","-i",path,
+                "-vf",vf_str,"-af",af_str,
+                "-c:v","libx264","-crf",crf,"-preset","fast","-c:a","aac",str(fwd)],
+                capture_output=True)
+            subprocess.run(["ffmpeg","-y","-i",str(fwd),
+                "-vf","reverse","-af","areverse",
+                "-c:v","libx264","-crf",crf,"-preset","fast","-c:a","aac",str(rev)],
+                capture_output=True)
+            with open(concat,"w") as f:
+                f.write(f"file '{fwd}'\nfile '{rev}'\n")
+            subprocess.run(["ffmpeg","-y","-f","concat","-safe","0","-i",str(concat),
+                "-c","copy",str(output)], capture_output=True)
+            for f in [fwd,rev,concat]:
+                try: f.unlink()
+                except: pass
+        elif p.get("stabilize"):
+            # 2-pass stabilization
+            job_update(job_id, progress=20, message="Analyzing shake (pass 1)...")
+            trf = OUTPUT_DIR / f"transforms_{job_id[:6]}.trf"
+            r1 = subprocess.run(["ffmpeg","-y","-i",path,
+                "-vf",f"vidstabdetect=shakiness=10:accuracy=15:result={trf}",
+                "-f","null","-"], capture_output=True)
+            job_update(job_id, progress=50, message="Stabilizing (pass 2)...")
+            stab_vf = f"vidstabtransform=input={trf}:zoom=5:smoothing=30,unsharp=5:5:0.8:3:3:0.4"
+            if vf:
+                stab_vf = stab_vf + "," + ",".join(vf)
+            r2 = subprocess.run(["ffmpeg","-y","-i",path,
+                "-vf",stab_vf,
+                "-af",af_str,
+                "-c:v","libx264","-crf",crf,"-preset","fast","-c:a","aac",str(output)],
+                capture_output=True)
+            try: trf.unlink()
+            except: pass
+            if r2.returncode != 0:
+                # fallback without stabilization
+                subprocess.run(["ffmpeg","-y","-i",path,
+                    "-vf",vf_str,"-af",af_str,
+                    "-c:v","libx264","-crf",crf,"-preset","fast","-c:a","aac",str(output)],
+                    capture_output=True)
+        elif int(p.get("burst_count",0)) > 0:
+            # Extract N frames as JPEGs
+            count = int(p["burst_count"])
+            info = get_video_info(path)
+            dur = info["duration"]
+            burst_dir = OUTPUT_DIR / f"burst_{job_id[:6]}"
+            burst_dir.mkdir(exist_ok=True)
+            frames = []
+            for i in range(count):
+                t = (i+1)*(dur/(count+1))
+                out_f = burst_dir / f"burst_{i:03d}.jpg"
+                subprocess.run(["ffmpeg","-y","-ss",str(t),"-i",path,
+                    "-vframes","1","-q:v","1",str(out_f)], capture_output=True)
+                if out_f.exists():
+                    frames.append(out_f.name)
+            # Zip them
+            import zipfile
+            zip_out = OUTPUT_DIR / f"burst_{job_id[:8]}.zip"
+            with zipfile.ZipFile(zip_out,"w") as zf:
+                for fn in frames:
+                    zf.write(burst_dir/fn, fn)
+            job_update(job_id, status="done", progress=100,
+                output=zip_out.name, burst=True,
+                message=f"Burst export: {len(frames)} frames")
+            return
+        else:
+            r = subprocess.run(["ffmpeg","-y","-i",path,
+                "-vf",vf_str,"-af",af_str,
+                "-c:v","libx264","-crf",crf,"-preset","fast","-c:a","aac",str(output)],
+                capture_output=True, text=True)
+            if r.returncode != 0:
+                job_update(job_id, status="error", message=r.stderr[-200:])
+                return
+
+        job_update(job_id, status="done", progress=100,
+                   output=output.name, message="GoPro export complete!")
+    except Exception as e:
+        import traceback
+        job_update(job_id, status="error", message=str(e))
+
+# ── Stabilization check ───────────────────────────────────────────────────────
+@app.get("/check/vidstab")
+async def check_vidstab():
+    r = subprocess.run(["ffmpeg","-filters"], capture_output=True, text=True)
+    has = "vidstab" in r.stdout or "vidstab" in r.stderr
+    return {"available": has}
